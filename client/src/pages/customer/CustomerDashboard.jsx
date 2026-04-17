@@ -1,0 +1,161 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Bell, UtensilsCrossed } from 'lucide-react';
+import api from '../../lib/api';
+import useAuthStore from '../../store/authStore';
+import useOrderStore from '../../store/orderStore';
+import useCutoffTimer from '../../hooks/useCutoffTimer';
+import CustomerLayout from '../../components/layout/CustomerLayout';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Badge from '../../components/ui/Badge';
+import CountdownTimer from '../../components/ui/CountdownTimer';
+import StatusTimeline from '../../components/shared/StatusTimeline';
+import Spinner from '../../components/ui/Spinner';
+import { daysLeft, formatISTDate } from '../../lib/timeUtils';
+
+export default function CustomerDashboard() {
+  const navigate = useNavigate();
+  const { customer } = useAuthStore();
+  const { todayOrders, subscription, setTodayOrders, setSubscription } = useOrderStore();
+  const timer = useCutoffTimer();
+  const [loading, setLoading] = useState(true);
+
+  async function loadData() {
+    try {
+      const [ordersRes, subRes] = await Promise.all([
+        api.get('/orders/today'),
+        api.get('/customer/subscription'),
+      ]);
+      setTodayOrders(ordersRes.data.orders);
+      setSubscription(subRes.data.subscription);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const lunchOrder = todayOrders.find(o => o.meal_type === 'lunch');
+  const dinnerOrder = todayOrders.find(o => o.meal_type === 'dinner');
+
+  const timerLabel = timer.meal === 'lunch' ? 'Lunch ka order band hoga:'
+    : timer.meal === 'dinner' ? 'Dinner ka order band hoga:'
+    : null;
+
+  const subDaysLeft = subscription ? daysLeft(subscription.end_date) : 0;
+
+  if (loading) return <CustomerLayout><div className="flex justify-center py-20"><Spinner size="lg" /></div></CustomerLayout>;
+
+  return (
+    <CustomerLayout>
+      <div className="p-4 space-y-4 max-w-md mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between pt-4">
+          <div>
+            <h1 className="font-playfair text-2xl text-ci-white font-bold">Namaste, {customer?.name?.split(' ')[0]}!</h1>
+            {subscription && (
+              <div className="inline-flex items-center gap-1.5 mt-1.5 bg-ci-gold/15 border border-ci-gold/30 rounded-full px-3 py-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-ci-success" />
+                <span className="text-ci-gold text-xs font-medium">Active · {subDaysLeft} din bache</span>
+              </div>
+            )}
+          </div>
+          <button className="text-ci-white-muted hover:text-ci-white"><Bell size={22} /></button>
+        </div>
+
+        {/* Cutoff Countdown Card */}
+        <Card goldBorder className="border-t-4 border-t-ci-gold">
+          {timer.isOpen ? (
+            <>
+              <p className="text-ci-white-muted text-sm mb-2">{timerLabel}</p>
+              <div className="flex justify-center">
+                <CountdownTimer
+                  secondsRemaining={timer.secondsRemaining}
+                  pulse={timer.secondsRemaining < 3600}
+                />
+              </div>
+              {timer.bothOpen && (
+                <p className="text-ci-white-muted text-xs text-center mt-2">Dinner bhi aaj book kar sakte ho</p>
+              )}
+              {!timer.bothOpen && timer.meal === 'dinner' && (
+                <p className="text-ci-white-muted text-xs text-center mt-2">Lunch: Kal ke liye book kar sakte ho</p>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-2">
+              <p className="text-ci-white font-semibold mb-1">Aaj ke orders closed hain</p>
+              <p className="text-ci-white-muted text-sm">Kal ke meals ke liye booking midnight ko khulegi</p>
+              <Button variant="secondary" size="sm" className="mt-3" onClick={() => navigate('/customer/book')}>
+                Kal ke liye Book Karo
+              </Button>
+            </div>
+          )}
+        </Card>
+
+        {/* No subscription */}
+        {!subscription && (
+          <Card goldBorder>
+            <p className="text-ci-white font-semibold mb-1">Koi active subscription nahi hai</p>
+            <p className="text-ci-white-muted text-sm mb-3">Plan lo aur daily tiffin pao!</p>
+            <Button size="sm" onClick={() => navigate('/customer/plans')}>Plan Lo →</Button>
+          </Card>
+        )}
+
+        {/* Today's Meals */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-ci-white font-semibold flex items-center gap-2">
+              <UtensilsCrossed size={16} className="text-ci-gold" /> Aaj ke Meals
+            </h2>
+            <p className="text-ci-white-muted text-xs">{new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', day: 'numeric', month: 'short' })}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {[['lunch', '☀️', '12 PM – 2 PM', lunchOrder, timer.lunchLocked],
+              ['dinner', '🌙', '7 PM – 9 PM', dinnerOrder, timer.dinnerLocked]].map(([meal, icon, window, order, locked]) => (
+              <div key={meal}
+                className={`bg-ci-black-soft border rounded-card p-3 ${order ? 'border-ci-gold/50' : locked ? 'border-ci-black-border opacity-70 watermark-closed' : 'border-ci-black-border'}`}>
+                <div className="text-center mb-2">
+                  <span className="text-2xl">{icon}</span>
+                  <p className="text-ci-white font-semibold capitalize text-sm mt-1">{meal}</p>
+                  <p className="text-ci-white-muted text-xs">{window}</p>
+                </div>
+                {order ? (
+                  <>
+                    <div className="flex justify-center mb-2">
+                      <Badge status={order.status}>{order.status}</Badge>
+                    </div>
+                    <StatusTimeline order={order} />
+                  </>
+                ) : locked ? (
+                  <p className="text-ci-error text-xs text-center">Booking band</p>
+                ) : (
+                  <Button size="sm" className="w-full text-xs py-2 mt-1" onClick={() => navigate('/customer/book', { state: { meal } })}>
+                    Book Karo
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Book */}
+        {subscription && (timer.isOpen) && (
+          <Card className="bg-ci-gold/10 border-ci-gold/30 text-center">
+            <p className="text-ci-white text-sm font-medium mb-2">
+              {timer.meal === 'lunch' ? '☀️ Lunch' : '🌙 Dinner'} book karo — jaldi karo!
+            </p>
+            <Button size="sm" onClick={() => navigate('/customer/book', { state: { meal: timer.meal } })}>
+              Abhi Book Karo
+            </Button>
+          </Card>
+        )}
+      </div>
+    </CustomerLayout>
+  );
+}
