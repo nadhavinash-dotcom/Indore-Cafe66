@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { getDB } = require('../config/database');
 const { getISTDateString } = require('../services/timeService');
 const { verifyToken } = require('../middleware/auth');
+const { onOrderStatusChange } = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -37,6 +38,8 @@ router.put('/orders/:id/status', verifyToken('partner'), (req, res) => {
 
   const tsField = { picked_up: 'status_picked_up_at', in_transit: 'status_in_transit_at', delivered: 'status_delivered_at' }[status];
   db.prepare(`UPDATE orders SET status = ?, ${tsField} = datetime('now') WHERE id = ?`).run(status, req.params.id);
+
+  onOrderStatusChange(order, status).catch(() => {});
 
   res.json({ success: true, status });
 });

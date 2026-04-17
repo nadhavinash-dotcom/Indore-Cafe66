@@ -18,6 +18,7 @@ const partnersRoutes = require('./routes/partners');
 const supportRoutes = require('./routes/support');
 const paymentsRoutes = require('./routes/payments');
 const adminRoutes = require('./routes/admin');
+const notificationsRoutes = require('./routes/notifications');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -61,6 +62,9 @@ app.use('/api/payment', paymentsRoutes);
 
 // Admin (stats, revenue, settings)
 app.use('/api/admin', adminRoutes);
+
+// Notifications (push token registration + log)
+app.use('/api', notificationsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
