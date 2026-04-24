@@ -28,7 +28,7 @@ const DELIVERY_AREAS = [
 
 const MEAL_PREFERENCES = ['veg', 'nonveg', 'jain', 'special'];
 
-const ORDER_STATUSES = ['pending', 'confirmed', 'picked_up', 'in_transit', 'delivered', 'cancelled'];
+const ORDER_STATUSES = ['Pending', 'Confirmed', 'Picked_up', 'In_transit', 'Delivered', 'Cancelled'];
 
 const COUPONS = {
   INDOORI10: { type: 'percent', value: 10, description: '10% off' },

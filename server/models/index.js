@@ -68,7 +68,7 @@ const orderSchema = new mongoose.Schema({
   customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true, index: true },
   meal_type: { type: String, required: true },
   delivery_date: { type: String, required: true, index: true },
-  status: { type: String, default: 'pending' },
+  status: { type: String, default: 'Pending' },
   partner_id: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryPartner', default: null, index: true },
   special_note: { type: String, default: null },
   status_confirmed_at: { type: Date, default: null },

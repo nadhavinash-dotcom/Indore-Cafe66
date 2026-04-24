@@ -101,7 +101,7 @@ router.get('/', verifyToken('admin'), asyncHandler(async (req, res) => {
 
 router.put('/:id/status', verifyToken('admin'), asyncHandler(async (req, res) => {
   const { status, partnerId } = req.body;
-  const validStatuses = ['pending', 'confirmed', 'picked_up', 'in_transit', 'delivered', 'cancelled'];
+  const validStatuses = ['Pending', 'Confirmed', 'Picked_up', 'In_transit', 'Delivered', 'Cancelled'];
   if (!validStatuses.includes(status)) return res.status(400).json({ error: 'INVALID_STATUS' });
 
   const update = { status };

@@ -90,7 +90,7 @@ export default function PartnerDashboard() {
               )}
               <div className="space-y-2">
                 {orders.sort((a, b) => {
-                  const orderStatus = ['confirmed', 'picked_up', 'in_transit', 'pending', 'delivered'];
+                  const orderStatus = ['Confirmed', 'Picked_up', 'In_transit', 'Pending', 'Delivered'];
                   return orderStatus.indexOf(a.status) - orderStatus.indexOf(b.status);
                 }).map((order) => (
                   <Card

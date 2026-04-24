@@ -21,27 +21,69 @@ export default function CustomerDashboard() {
   const timer = useCutoffTimer();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [currentLocationName, setCurrentLocationName] = useState('');
+
   useEffect(() => {
-    // Define the async function inside the effect
-    const fetchData = async () => {
+    const fetchProfile = async () => {
       try {
-        const [pRes] = await Promise.all([
-          api.get('/customer/profile'),
-          // api.get('/customer/subscriptions') <--- you can add more here later
-        ]);
-
-        console.log('Customer Profile:', pRes.data.customer);
-
-        // Update your state here
-        setProfile(pRes.data.customer);
-
+        const response = await api.get('/customer/profile');
+        setProfile(response.data.customer);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error('Error fetching profile:', error);
       }
     };
 
-    fetchData();
-  }, []); // Empty dependency array means this runs once on mount
+    fetchProfile();
+  }, []);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        setCurrentLocation({
+          latitude,
+          longitude,
+        });
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=en&lat=${latitude}&lon=${longitude}`,
+            {
+              headers: {
+                Accept: 'application/json',
+                'Accept-Language': 'en',
+              },
+            }
+          );
+          const data = await response.json();
+          const address = data.address || {};
+          const locationLabel = [
+            address.suburb,
+            address.neighbourhood,
+            address.city || address.town || address.village,
+            address.state,
+          ].filter(Boolean)[0] || data.display_name || 'Current location';
+          setCurrentLocationName(locationLabel);
+        } catch (error) {
+          console.error('Error resolving current location name:', error);
+          setCurrentLocationName('Current location');
+        }
+      },
+      (error) => {
+        console.error('Error fetching current location:', error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  }, []);
 
   async function loadData() {
     try {
@@ -73,7 +115,15 @@ export default function CustomerDashboard() {
 
   const subDaysLeft = subscription ? daysLeft(subscription.end_date) : 0;
 
-  if (loading) return <CustomerLayout><div className="flex justify-center py-20"><Spinner size="lg" /></div></CustomerLayout>;
+  if (loading) {
+    return (
+      <CustomerLayout>
+        <div className="flex justify-center py-20">
+          <Spinner size="lg" />
+        </div>
+      </CustomerLayout>
+    );
+  }
 
   return (
     <CustomerLayout>
@@ -86,6 +136,11 @@ export default function CustomerDashboard() {
                 <span className="w-1.5 h-1.5 rounded-full bg-ci-success" />
                 <span className="text-ci-gold text-xs font-medium">Active • {subDaysLeft} days left</span>
               </div>
+            )}
+            {currentLocation && (
+              <p className="text-ci-white-muted text-xs mt-2">
+                Current location: {currentLocationName || `${currentLocation.latitude.toFixed(5)}, ${currentLocation.longitude.toFixed(5)}`}
+              </p>
             )}
           </div>
           <button className="text-ci-white-muted hover:text-ci-white"><Bell size={22} /></button>
@@ -133,7 +188,10 @@ export default function CustomerDashboard() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {[['lunch', '☀️', '12 PM - 2 PM', lunchOrder, timer.lunchLocked], ['dinner', '🌙', '7 PM - 9 PM', dinnerOrder, timer.dinnerLocked]].map(([meal, icon, window, order, locked]) => (
+            {[
+              ['lunch', '☀️', '12 PM - 2 PM', lunchOrder, timer.lunchLocked],
+              ['dinner', '🌙', '7 PM - 9 PM', dinnerOrder, timer.dinnerLocked],
+            ].map(([meal, icon, window, order, locked]) => (
               <div
                 key={meal}
                 className={`bg-ci-black-soft border rounded-card p-3 ${order ? 'border-ci-gold/50' : locked ? 'border-ci-black-border opacity-70 watermark-closed' : 'border-ci-black-border'}`}
@@ -167,7 +225,7 @@ export default function CustomerDashboard() {
             <p className="text-ci-white text-sm font-medium mb-2">
               {timer.meal === 'lunch' ? '☀️ Lunch' : '🌙 Dinner'} booking is open - reserve now.
             </p>
-            <Button size="sm" onClick={() => navigate('/customer/book', { state: { meal: timer.meal, profile: profile } })}>
+            <Button size="sm" onClick={() => navigate('/customer/book', { state: { meal: timer.meal, profile, currentLocation } })}>
               Book Now
             </Button>
           </Card>

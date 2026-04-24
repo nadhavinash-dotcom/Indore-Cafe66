@@ -31,7 +31,7 @@ export default function OrderDetail() {
   const [updating, setUpdating] = useState(false);
 
   const transition = order ? STATUS_TRANSITIONS[order.status] : null;
-  const mapsUrl = order ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([order.address_line1, order.area, 'Indore'].filter(Boolean).join(', '))}` : '#';
+  const mapsUrl = order ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([order.address_line1, order.area].filter(Boolean).join(', '))}` : '#';
 
   async function handleStatusUpdate() {
     if (!transition) return;
