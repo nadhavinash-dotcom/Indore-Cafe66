@@ -1,34 +1,28 @@
 const express = require('express');
-const { getDB } = require('../config/database');
 const { verifyToken } = require('../middleware/auth');
+const { Customer, DeliveryPartner, NotificationLog } = require('../models');
+const { asyncHandler } = require('../utils/asyncHandler');
+const { serializeDoc } = require('../utils/mongo');
 
 const router = express.Router();
 
-// PUT /api/customer/push-token
-router.put('/customer/push-token', verifyToken('customer'), (req, res) => {
-  const db = getDB();
+router.put('/customer/push-token', verifyToken('customer'), asyncHandler(async (req, res) => {
   const { pushToken } = req.body;
   if (!pushToken) return res.status(400).json({ error: 'Push token required' });
-  db.prepare('UPDATE customers SET push_token = ? WHERE id = ?').run(pushToken, req.user.id);
+  await Customer.updateOne({ _id: req.user.id }, { $set: { push_token: pushToken } });
   res.json({ success: true });
-});
+}));
 
-// PUT /api/partner/push-token
-router.put('/partner/push-token', verifyToken('partner'), (req, res) => {
-  const db = getDB();
+router.put('/partner/push-token', verifyToken('partner'), asyncHandler(async (req, res) => {
   const { pushToken } = req.body;
   if (!pushToken) return res.status(400).json({ error: 'Push token required' });
-  db.prepare('UPDATE delivery_partners SET push_token = ? WHERE id = ?').run(pushToken, req.user.id);
+  await DeliveryPartner.updateOne({ _id: req.user.id }, { $set: { push_token: pushToken } });
   res.json({ success: true });
-});
+}));
 
-// GET /api/admin/notifications (notification log)
-router.get('/admin/notifications', verifyToken('admin'), (req, res) => {
-  const db = getDB();
-  const logs = db.prepare(`
-    SELECT * FROM notification_log ORDER BY created_at DESC LIMIT 100
-  `).all();
-  res.json({ logs });
-});
+router.get('/admin/notifications', verifyToken('admin'), asyncHandler(async (_req, res) => {
+  const logs = await NotificationLog.find().sort({ created_at: -1 }).limit(100);
+  res.json({ logs: serializeDoc(logs) });
+}));
 
 module.exports = router;

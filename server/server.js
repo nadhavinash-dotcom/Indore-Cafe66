@@ -6,6 +6,7 @@ const express = require('express');
 const cors = require('cors');
 const { errorHandler } = require('./middleware/errorHandler');
 const { initCronJobs } = require('./cron/index');
+const { connectDB } = require('./config/database');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -26,47 +27,24 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174'], credentials: true }));
 app.use(express.json());
 
-// Auth
 app.use('/api/auth', authRoutes);
-
-// Booking availability + book
 app.use('/api/booking', bookingRoutes);
-// Also handle /api/orders/book via booking router
 app.post('/api/orders/book', (req, res, next) => {
   req.url = '/book';
   bookingRoutes(req, res, next);
 });
-
-// Orders (admin + customer)
 app.use('/api/orders', ordersRoutes);
-
-// Kitchen (admin)
 app.use('/api/admin/kitchen', kitchenRoutes);
-
-// Customer profile
 app.use('/api/customer/subscription', subscriptionsRoutes);
 app.use('/api/customer', customersRoutes);
-
-// Subscriptions (admin)
 app.use('/api/subscriptions', subscriptionsRoutes);
-
-// Partners (partner portal + admin)
 app.use('/api/partner', partnersRoutes);
 app.use('/api/admin/partners', partnersRoutes);
-
-// Support
 app.use('/api/support', supportRoutes);
-
-// Payments
 app.use('/api/payment', paymentsRoutes);
-
-// Admin (stats, revenue, settings)
 app.use('/api/admin', adminRoutes);
-
-// Notifications (push token registration + log)
 app.use('/api', notificationsRoutes);
 
-// Health check
 app.get('/api/health', (req, res) => {
   const { getISTDateString, getISTTimeString } = require('./services/timeService');
   res.json({ status: 'ok', time: getISTTimeString(), date: getISTDateString(), tz: process.env.TZ });
@@ -74,9 +52,18 @@ app.get('/api/health', (req, res) => {
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Cafe Indoori API running on port ${PORT} (IST: ${new Date().toLocaleTimeString('en-IN')})`);
-  initCronJobs();
+async function startServer() {
+  await connectDB();
+
+  app.listen(PORT, () => {
+    console.log(`Cafe Indoori API running on port ${PORT} (IST: ${new Date().toLocaleTimeString('en-IN')})`);
+    initCronJobs();
+  });
+}
+
+startServer().catch((error) => {
+  console.error('[Server] Failed to start:', error.message);
+  process.exit(1);
 });
 
 module.exports = app;

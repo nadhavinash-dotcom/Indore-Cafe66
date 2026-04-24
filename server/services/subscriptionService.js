@@ -1,44 +1,36 @@
-const { getDB } = require('../config/database');
+const { Order, Subscription } = require('../models');
 const { getISTDateString, getTomorrowISTDateString } = require('./timeService');
 
-function generateDailyOrders() {
-  const db = getDB();
+async function generateDailyOrders() {
   const tomorrow = getTomorrowISTDateString();
-
-  const activeSubscriptions = db.prepare(`
-    SELECT s.id, s.customer_id, s.meal_type, s.pause_start, s.pause_end
-    FROM subscriptions s
-    WHERE s.status = 'active'
-      AND s.end_date >= ?
-  `).all(tomorrow);
+  const activeSubscriptions = await Subscription.find({
+    status: 'active',
+    end_date: { $gte: tomorrow },
+  });
 
   let created = 0;
-  const stmt = db.prepare(`
-    INSERT OR IGNORE INTO orders (subscription_id, customer_id, meal_type, delivery_date, status)
-    VALUES (@subscription_id, @customer_id, @meal_type, @delivery_date, 'pending')
-  `);
-
-  // Also create unique constraint check
-  const checkStmt = db.prepare(`
-    SELECT id FROM orders WHERE customer_id = ? AND meal_type = ? AND delivery_date = ?
-  `);
 
   for (const sub of activeSubscriptions) {
-    // Check if paused for tomorrow
-    if (sub.pause_start && sub.pause_end) {
-      if (tomorrow >= sub.pause_start && tomorrow <= sub.pause_end) continue;
+    if (sub.pause_start && sub.pause_end && tomorrow >= sub.pause_start && tomorrow <= sub.pause_end) {
+      continue;
     }
 
     const mealsToCreate = sub.meal_type === 'both' ? ['lunch', 'dinner'] : [sub.meal_type];
 
     for (const mealType of mealsToCreate) {
-      const exists = checkStmt.get(sub.customer_id, mealType, tomorrow);
+      const exists = await Order.findOne({
+        customer_id: sub.customer_id,
+        meal_type: mealType,
+        delivery_date: tomorrow,
+      });
+
       if (!exists) {
-        stmt.run({
-          subscription_id: sub.id,
+        await Order.create({
+          subscription_id: sub._id,
           customer_id: sub.customer_id,
           meal_type: mealType,
           delivery_date: tomorrow,
+          status: 'pending',
         });
         created++;
       }
@@ -49,17 +41,16 @@ function generateDailyOrders() {
   return created;
 }
 
-function checkSubscriptionExpiry() {
-  const db = getDB();
+async function checkSubscriptionExpiry() {
   const today = getISTDateString();
+  const result = await Subscription.updateMany(
+    { status: 'active', end_date: { $lt: today } },
+    { $set: { status: 'expired' } }
+  );
 
-  const result = db.prepare(`
-    UPDATE subscriptions SET status = 'expired'
-    WHERE status = 'active' AND end_date < ?
-  `).run(today);
-
-  console.log(`[Cron] Marked ${result.changes} subscriptions as expired`);
-  return result.changes;
+  const count = result.modifiedCount || 0;
+  console.log(`[Cron] Marked ${count} subscriptions as expired`);
+  return count;
 }
 
 module.exports = { generateDailyOrders, checkSubscriptionExpiry };

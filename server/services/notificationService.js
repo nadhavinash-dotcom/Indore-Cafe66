@@ -1,5 +1,5 @@
 const https = require('https');
-const { getDB } = require('../config/database');
+const { Customer, DeliveryPartner, NotificationLog, Order, Subscription } = require('../models');
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
@@ -49,72 +49,75 @@ async function sendPushNotification({ token, title, body, data = {} }) {
 }
 
 async function notifyCustomer(customerId, { title, body, data = {} }) {
-  const db = getDB();
-  const customer = db.prepare('SELECT push_token FROM customers WHERE id = ?').get(customerId);
-  if (!customer?.push_token) return;
+  const customer = await Customer.findById(customerId).select('push_token');
+  if (!customer?.push_token) return null;
 
   const result = await sendPushNotification({ token: customer.push_token, title, body, data });
 
-  // Log notification
   try {
-    db.prepare(`
-      INSERT INTO notification_log (recipient_type, recipient_id, title, body, data, status)
-      VALUES ('customer', ?, ?, ?, ?, ?)
-    `).run(customerId, title, body, JSON.stringify(data), result.status);
+    await NotificationLog.create({
+      recipient_type: 'customer',
+      recipient_id: customerId,
+      title,
+      body,
+      data,
+      status: result.status,
+    });
   } catch (_) {}
 
   return result;
 }
 
 async function notifyPartner(partnerId, { title, body, data = {} }) {
-  const db = getDB();
-  const partner = db.prepare('SELECT push_token FROM delivery_partners WHERE id = ?').get(partnerId);
-  if (!partner?.push_token) return;
+  const partner = await DeliveryPartner.findById(partnerId).select('push_token');
+  if (!partner?.push_token) return null;
 
   const result = await sendPushNotification({ token: partner.push_token, title, body, data });
 
   try {
-    db.prepare(`
-      INSERT INTO notification_log (recipient_type, recipient_id, title, body, data, status)
-      VALUES ('partner', ?, ?, ?, ?, ?)
-    `).run(partnerId, title, body, JSON.stringify(data), result.status);
+    await NotificationLog.create({
+      recipient_type: 'partner',
+      recipient_id: partnerId,
+      title,
+      body,
+      data,
+      status: result.status,
+    });
   } catch (_) {}
 
   return result;
 }
 
-// Notification templates
 const NOTIFICATIONS = {
   orderConfirmed: (customerName) => ({
-    title: '✅ Order Confirmed!',
+    title: 'Order Confirmed',
     body: `${customerName}, aapka tiffin confirm ho gaya. Delivery time pe hogi.`,
   }),
   orderPickedUp: (customerName) => ({
-    title: '📦 Tiffin Utha Liya',
+    title: 'Tiffin Utha Liya',
     body: `${customerName}, delivery partner ne aapka tiffin pick up kar liya.`,
   }),
   orderInTransit: (customerName) => ({
-    title: '🛵 Tiffin Aa Raha Hai!',
+    title: 'Tiffin Aa Raha Hai',
     body: `${customerName}, aapka tiffin raaste mein hai. Thodi der mein pahunch jayega.`,
   }),
   orderDelivered: (customerName) => ({
-    title: '🎉 Tiffin Deliver Ho Gaya!',
+    title: 'Tiffin Deliver Ho Gaya',
     body: `${customerName}, aapka tiffin deliver ho gaya. Khao aur maza karo!`,
   }),
   newOrderAssigned: (partnerName, area) => ({
-    title: '🍱 Naya Order Mila',
+    title: 'Naya Order Mila',
     body: `${partnerName}, ${area} area mein naya delivery order assign hua hai.`,
   }),
   cutoffReminder: (mealType, minutesLeft) => ({
-    title: `⏰ ${mealType === 'lunch' ? 'Lunch' : 'Dinner'} Booking Band Hone Wali Hai`,
+    title: `${mealType === 'lunch' ? 'Lunch' : 'Dinner'} Booking Band Hone Wali Hai`,
     body: `Sirf ${minutesLeft} minute bache hain! Jaldi order karo.`,
   }),
 };
 
 async function onOrderStatusChange(order, newStatus) {
   try {
-    const db = getDB();
-    const customer = db.prepare('SELECT id, name, push_token FROM customers WHERE id = ?').get(order.customer_id);
+    const customer = await Customer.findById(order.customer_id).select('name');
     if (!customer) return;
 
     const notif = {
@@ -125,20 +128,15 @@ async function onOrderStatusChange(order, newStatus) {
     }[newStatus];
 
     if (notif) {
-      await notifyCustomer(customer.id, { ...notif, data: { orderId: order.id, screen: 'OrderDetail' } });
+      await notifyCustomer(customer.id, { ...notif, data: { orderId: String(order._id || order.id), screen: 'OrderDetail' } });
     }
 
-    // Notify partner for new assigned order
     if (newStatus === 'confirmed' && order.partner_id) {
-      const partnerOrder = db.prepare(`
-        SELECT o.*, c.area FROM orders o
-        JOIN customers c ON o.customer_id = c.id
-        WHERE o.id = ?
-      `).get(order.id);
+      const partnerOrder = await Order.findById(order._id || order.id).populate('customer_id', 'area');
       if (partnerOrder) {
         await notifyPartner(order.partner_id, {
-          ...NOTIFICATIONS.newOrderAssigned('Partner', partnerOrder.area),
-          data: { orderId: order.id, screen: 'OrderDetail' },
+          ...NOTIFICATIONS.newOrderAssigned('Partner', partnerOrder.customer_id?.area || 'Other'),
+          data: { orderId: String(order._id || order.id), screen: 'OrderDetail' },
         });
       }
     }
@@ -149,34 +147,35 @@ async function onOrderStatusChange(order, newStatus) {
 
 async function sendCutoffReminder(mealType) {
   try {
-    const db = getDB();
     const { getISTDateString } = require('./timeService');
     const today = getISTDateString();
 
-    // Get all active customers who haven't booked yet
-    const customers = db.prepare(`
-      SELECT DISTINCT c.id, c.name, c.push_token
-      FROM subscriptions s
-      JOIN customers c ON s.customer_id = c.id
-      WHERE s.status = 'active'
-        AND c.push_token IS NOT NULL
-        AND NOT EXISTS (
-          SELECT 1 FROM orders o
-          WHERE o.customer_id = c.id
-            AND o.meal_type = ?
-            AND o.delivery_date = ?
-            AND o.status != 'cancelled'
-        )
-    `).all(mealType, today);
+    const subscriptions = await Subscription.find({ status: 'active' }).populate('customer_id', 'id name push_token');
+    const customers = [];
 
-    for (const customer of customers) {
+    for (const subscription of subscriptions) {
+      if (!subscription.customer_id?.push_token) continue;
+
+      const hasOrder = await Order.exists({
+        customer_id: subscription.customer_id._id,
+        meal_type: mealType,
+        delivery_date: today,
+        status: { $ne: 'cancelled' },
+      });
+
+      if (!hasOrder) customers.push(subscription.customer_id);
+    }
+
+    const uniqueCustomers = [...new Map(customers.map((customer) => [customer.id, customer])).values()];
+
+    for (const customer of uniqueCustomers) {
       await notifyCustomer(customer.id, {
         ...NOTIFICATIONS.cutoffReminder(mealType, 30),
         data: { screen: 'BookMeal', mealType },
       });
     }
 
-    console.log(`[Notifications] Sent cutoff reminders to ${customers.length} customers`);
+    console.log(`[Notifications] Sent cutoff reminders to ${uniqueCustomers.length} customers`);
   } catch (err) {
     console.error('[Notifications] Cutoff reminder error:', err.message);
   }
@@ -188,4 +187,5 @@ module.exports = {
   onOrderStatusChange,
   sendCutoffReminder,
   NOTIFICATIONS,
+  EXPO_PUSH_URL,
 };

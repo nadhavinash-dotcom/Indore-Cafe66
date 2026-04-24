@@ -1,72 +1,105 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { getDB } = require('../config/database');
+const { Customer, Order, Subscription, SupportTicket } = require('../models');
 const { verifyToken } = require('../middleware/auth');
+const { asyncHandler } = require('../utils/asyncHandler');
+const { escapeRegex, serializeDoc } = require('../utils/mongo');
 
 const router = express.Router();
 
-// GET /api/customer/profile
-router.get('/profile', verifyToken('customer'), (req, res) => {
-  const db = getDB();
-  const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.user.id);
+router.get('/profile', verifyToken('customer'), asyncHandler(async (req, res) => {
+  const customer = await Customer.findById(req.user.id);
   if (!customer) return res.status(404).json({ error: 'NOT_FOUND' });
-  res.json({ customer });
-});
+  res.json({ customer: serializeDoc(customer) });
+}));
 
-// PUT /api/customer/profile
 router.put('/profile', verifyToken('customer'),
   body('name').optional().notEmpty(),
   body('area').optional(),
-  (req, res) => {
-    const db = getDB();
+  asyncHandler(async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR' });
+
     const fields = ['name', 'address_line1', 'address_line2', 'area', 'landmark', 'pincode', 'meal_preference', 'special_instructions'];
-    const updates = [];
-    const values = [];
-    for (const f of fields) {
-      if (req.body[f] !== undefined) {
-        updates.push(`${f} = ?`);
-        values.push(req.body[f]);
-      }
+    const update = {};
+
+    for (const field of fields) {
+      if (req.body[field] !== undefined) update[field] = req.body[field];
     }
-    if (!updates.length) return res.status(400).json({ error: 'NO_FIELDS' });
-    values.push(req.user.id);
-    db.prepare(`UPDATE customers SET ${updates.join(', ')} WHERE id = ?`).run(...values);
-    const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.user.id);
-    res.json({ success: true, customer });
-  }
+
+    if (!Object.keys(update).length) return res.status(400).json({ error: 'NO_FIELDS' });
+
+    const customer = await Customer.findByIdAndUpdate(req.user.id, { $set: update }, { new: true });
+    res.json({ success: true, customer: serializeDoc(customer) });
+  })
 );
 
-// Admin: GET /api/admin/customers
-router.get('/', verifyToken('admin'), (req, res) => {
-  const db = getDB();
+router.get('/', verifyToken('admin'), asyncHandler(async (req, res) => {
   const { search, area, plan_type, page = 1, limit = 50 } = req.query;
-  let sql = `
-    SELECT c.*,
-      (SELECT s.status FROM subscriptions s WHERE s.customer_id = c.id ORDER BY s.created_at DESC LIMIT 1) as sub_status,
-      (SELECT s.plan_type FROM subscriptions s WHERE s.customer_id = c.id ORDER BY s.created_at DESC LIMIT 1) as plan_type,
-      (SELECT s.end_date FROM subscriptions s WHERE s.customer_id = c.id ORDER BY s.created_at DESC LIMIT 1) as sub_end_date
-    FROM customers c WHERE 1=1
-  `;
-  const params = [];
-  if (search) { sql += ` AND (c.name LIKE ? OR c.phone LIKE ?)`; params.push(`%${search}%`, `%${search}%`); }
-  if (area) { sql += ` AND c.area = ?`; params.push(area); }
-  sql += ` ORDER BY c.created_at DESC LIMIT ? OFFSET ?`;
-  params.push(Number(limit), (Number(page) - 1) * Number(limit));
+  const pageNumber = Number(page);
+  const limitNumber = Number(limit);
+  const skip = (pageNumber - 1) * limitNumber;
+  const filters = {};
 
-  const customers = db.prepare(sql).all(...params);
-  const total = db.prepare('SELECT COUNT(*) as c FROM customers').get().c;
-  res.json({ customers, total });
-});
+  if (search) {
+    const regex = new RegExp(escapeRegex(search), 'i');
+    filters.$or = [{ name: regex }, { phone: regex }];
+  }
 
-// Admin: GET /api/admin/customers/:id
-router.get('/:id', verifyToken('admin'), (req, res) => {
-  const db = getDB();
-  const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
+  if (area) filters.area = area;
+
+  const [customers, total] = await Promise.all([
+    Customer.find(filters).sort({ created_at: -1 }).skip(skip).limit(limitNumber),
+    Customer.countDocuments(filters),
+  ]);
+
+  const customerIds = customers.map((customer) => customer._id);
+  const latestSubscriptions = await Subscription.aggregate([
+    { $match: { customer_id: { $in: customerIds } } },
+    { $sort: { created_at: -1 } },
+    {
+      $group: {
+        _id: '$customer_id',
+        sub_status: { $first: '$status' },
+        plan_type: { $first: '$plan_type' },
+        sub_end_date: { $first: '$end_date' },
+      },
+    },
+  ]);
+
+  const subMap = new Map(latestSubscriptions.map((item) => [String(item._id), item]));
+  let serializedCustomers = customers.map((customer) => {
+    const item = serializeDoc(customer);
+    const latest = subMap.get(item.id);
+    item.sub_status = latest?.sub_status || null;
+    item.plan_type = latest?.plan_type || null;
+    item.sub_end_date = latest?.sub_end_date || null;
+    return item;
+  });
+
+  if (plan_type) {
+    serializedCustomers = serializedCustomers.filter((customer) => customer.plan_type === plan_type);
+  }
+
+  res.json({ customers: serializedCustomers, total: plan_type ? serializedCustomers.length : total });
+}));
+
+router.get('/:id', verifyToken('admin'), asyncHandler(async (req, res) => {
+  const [customer, subscriptions, orders, tickets] = await Promise.all([
+    Customer.findById(req.params.id),
+    Subscription.find({ customer_id: req.params.id }).sort({ created_at: -1 }),
+    Order.find({ customer_id: req.params.id }).sort({ delivery_date: -1 }).limit(30),
+    SupportTicket.find({ customer_id: req.params.id }).sort({ created_at: -1 }),
+  ]);
+
   if (!customer) return res.status(404).json({ error: 'NOT_FOUND' });
-  const subscriptions = db.prepare('SELECT * FROM subscriptions WHERE customer_id = ? ORDER BY created_at DESC').all(req.params.id);
-  const orders = db.prepare('SELECT * FROM orders WHERE customer_id = ? ORDER BY delivery_date DESC LIMIT 30').all(req.params.id);
-  const tickets = db.prepare('SELECT * FROM support_tickets WHERE customer_id = ? ORDER BY created_at DESC').all(req.params.id);
-  res.json({ customer, subscriptions, orders, tickets });
-});
+
+  res.json({
+    customer: serializeDoc(customer),
+    subscriptions: serializeDoc(subscriptions),
+    orders: serializeDoc(orders),
+    tickets: serializeDoc(tickets),
+  });
+}));
 
 module.exports = router;

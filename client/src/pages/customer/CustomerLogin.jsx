@@ -16,6 +16,7 @@ export default function CustomerLogin() {
 
   async function handlePhoneSubmit(e) {
     e.preventDefault();
+    console.log('Submitting phone:', phoneInput);  
     if (phoneInput.length !== 10) { toast.error('10 digit phone number daalein'); return; }
     await requestOtp(phoneInput);
   }

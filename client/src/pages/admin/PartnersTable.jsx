@@ -17,22 +17,24 @@ export default function PartnersTable() {
   const [form, setForm] = useState({ name: '', phone: '', vehicleType: 'bike', areas: '' });
   const [saving, setSaving] = useState(false);
 
-  async function load() {
+  const load = async () => {
     setLoading(true);
     try {
       const res = await api.get('/admin/partners');
+      console.log('Loaded partners:', res);
       setPartners(res.data.partners);
     } finally {
       setLoading(false);
     }
   }
 
-  async function toggleDuty(id, isOnDuty) {
-    await api.put(`/partner/${id}`, { isOnDuty: !isOnDuty });
+  const toggleDuty = async (id, isOnDuty) => {
+    await api.put(`/partner/${id}`, {
+      isOnDuty: isOnDuty
+    });
     load();
-  }
-
-  async function handleAdd(e) {
+  };
+  const handleAdd = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
@@ -61,11 +63,11 @@ export default function PartnersTable() {
         {loading ? <div className="flex justify-center py-20"><Spinner size="lg" /></div> : (
           <div className="grid gap-3">
             {partners.map(p => (
-              <Card key={p.id} className="flex items-center justify-between gap-4">
+              <Card className="flex items-center justify-between gap-4">
                 <div className="flex-1">
                   <p className="text-ci-white font-semibold">{p.name}</p>
                   <p className="text-ci-white-muted text-sm">{p.phone} · {p.vehicle_type}</p>
-                  <p className="text-ci-white-muted text-xs mt-0.5">{JSON.parse(p.area_coverage || '[]').join(', ')}</p>
+                  <p className="text-ci-white-muted text-xs mt-0.5">{p.area_coverage}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-ci-gold font-bold text-lg">{p.today_delivered}/{p.today_total}</p>

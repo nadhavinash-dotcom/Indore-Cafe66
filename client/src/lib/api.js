@@ -9,7 +9,7 @@ api.interceptors.request.use((config) => {
   const url = config.url || '';
   let token;
   // Route-specific token selection
-  if (url.startsWith('/admin') || url.startsWith('/auth/admin')) {
+  if (url.startsWith('/admin') || url.startsWith('/auth/admin')||url.startsWith('api/partner')) {
     token = localStorage.getItem('ci_admin_token');
   } else if (url.startsWith('/partner')) {
     token = localStorage.getItem('ci_partner_token');

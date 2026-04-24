@@ -1,105 +1,90 @@
-const { getDB } = require('../config/database');
+const { KitchenPrepList, Order } = require('../models');
 const { getISTDateString, getISTTimeString } = require('./timeService');
+const { serializeDoc } = require('../utils/mongo');
 
-function generateKitchenListForDate(dateStr, mealType, isManual = false) {
-  const db = getDB();
-
-  const orders = db.prepare(`
-    SELECT
-      o.id as order_id,
-      o.status,
-      o.special_note,
-      o.partner_id,
-      c.name as customer_name,
-      c.phone,
-      c.address_line1,
-      c.address_line2,
-      c.area,
-      c.landmark,
-      c.pincode,
-      c.meal_preference,
-      c.special_instructions,
-      dp.name as partner_name
-    FROM orders o
-    JOIN customers c ON o.customer_id = c.id
-    LEFT JOIN delivery_partners dp ON o.partner_id = dp.id
-    WHERE o.delivery_date = ?
-      AND o.meal_type = ?
-      AND o.status != 'cancelled'
-    ORDER BY c.area, c.name
-  `).all(dateStr, mealType);
+async function generateKitchenListForDate(dateStr, mealType, isManual = false) {
+  const orders = await Order.find({
+    delivery_date: dateStr,
+    meal_type: mealType,
+    status: { $ne: 'cancelled' },
+  })
+    .populate('customer_id', 'name phone address_line1 address_line2 area landmark pincode meal_preference special_instructions')
+    .populate('partner_id', 'name')
+    .sort({ created_at: 1 });
 
   const summary = { veg: 0, nonveg: 0, jain: 0, special: 0, total: orders.length };
   const byArea = {};
   const orderList = [];
 
   orders.forEach((order, idx) => {
-    const pref = order.meal_preference || 'veg';
+    const customer = order.customer_id || {};
+    const pref = customer.meal_preference || 'veg';
+
     if (pref === 'veg') summary.veg++;
     else if (pref === 'nonveg') summary.nonveg++;
     else if (pref === 'jain') summary.jain++;
     else summary.special++;
 
-    const area = order.area || 'Other';
+    const area = customer.area || 'Other';
     if (!byArea[area]) byArea[area] = { veg: 0, nonveg: 0, jain: 0, special: 0, total: 0 };
     byArea[area][pref === 'nonveg' ? 'nonveg' : pref === 'jain' ? 'jain' : pref === 'special' ? 'special' : 'veg']++;
     byArea[area].total++;
 
     orderList.push({
       sr: idx + 1,
-      orderId: order.order_id,
-      customerName: order.customer_name,
-      phone: order.phone,
-      address: [order.address_line1, order.address_line2, order.landmark].filter(Boolean).join(', '),
+      orderId: order.id,
+      customerName: customer.name || '',
+      phone: customer.phone || '',
+      address: [customer.address_line1, customer.address_line2, customer.landmark].filter(Boolean).join(', '),
       area,
-      pincode: order.pincode,
+      pincode: customer.pincode || '',
       mealPreference: pref,
-      notes: order.special_note || order.special_instructions || '',
-      partnerName: order.partner_name || '',
-      partnerId: order.partner_id,
+      notes: order.special_note || customer.special_instructions || '',
+      partnerName: order.partner_id?.name || '',
+      partnerId: order.partner_id?.id || null,
       status: order.status,
     });
   });
 
-  const mealData = JSON.stringify({ summary, byArea, orders: orderList });
+  const mealData = { summary, byArea, orders: orderList };
 
-  db.prepare(`
-    INSERT INTO kitchen_prep_lists
-      (prep_date, meal_type, total_count, veg_count, nonveg_count, jain_count, special_count, meal_data, generated_at, is_manual_refresh)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?)
-    ON CONFLICT(prep_date, meal_type) DO UPDATE SET
-      total_count = excluded.total_count,
-      veg_count = excluded.veg_count,
-      nonveg_count = excluded.nonveg_count,
-      jain_count = excluded.jain_count,
-      special_count = excluded.special_count,
-      meal_data = excluded.meal_data,
-      generated_at = excluded.generated_at,
-      is_manual_refresh = excluded.is_manual_refresh
-  `).run(dateStr, mealType, summary.total, summary.veg, summary.nonveg, summary.jain, summary.special, mealData, isManual ? 1 : 0);
+  await KitchenPrepList.findOneAndUpdate(
+    { prep_date: dateStr, meal_type: mealType },
+    {
+      $set: {
+        total_count: summary.total,
+        veg_count: summary.veg,
+        nonveg_count: summary.nonveg,
+        jain_count: summary.jain,
+        special_count: summary.special,
+        meal_data: mealData,
+        generated_at: new Date(),
+        is_manual_refresh: !!isManual,
+      },
+    },
+    { upsert: true, new: true }
+  );
 
   console.log(`[Kitchen] Generated ${mealType} list for ${dateStr}: ${summary.total} tiffins`);
   return { summary, byArea, orders: orderList, generatedAt: getISTTimeString() };
 }
 
-function getKitchenList(dateStr, mealType) {
-  const db = getDB();
-  const row = db.prepare(
-    'SELECT * FROM kitchen_prep_lists WHERE prep_date = ? AND meal_type = ?'
-  ).get(dateStr, mealType);
-
+async function getKitchenList(dateStr, mealType) {
+  const row = await KitchenPrepList.findOne({ prep_date: dateStr, meal_type: mealType });
   if (!row) return null;
 
-  return {
-    ...row,
-    meal_data: JSON.parse(row.meal_data || '{}'),
-  };
+  const serialized = serializeDoc(row);
+  serialized.meal_data = serialized.meal_data || {};
+  return serialized;
 }
 
-function getTodayKitchenSummary() {
+async function getTodayKitchenSummary() {
   const today = getISTDateString();
-  const lunch = getKitchenList(today, 'lunch');
-  const dinner = getKitchenList(today, 'dinner');
+  const [lunch, dinner] = await Promise.all([
+    getKitchenList(today, 'lunch'),
+    getKitchenList(today, 'dinner'),
+  ]);
+
   return { lunch, dinner, date: today };
 }
 

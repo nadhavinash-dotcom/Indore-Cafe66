@@ -1,34 +1,46 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { getDB } = require('../config/database');
 const { getISTDateString } = require('../services/timeService');
 const { verifyToken } = require('../middleware/auth');
 const { onOrderStatusChange } = require('../services/notificationService');
+const { DeliveryPartner, Order } = require('../models');
+const { asyncHandler } = require('../utils/asyncHandler');
+const { serializeDoc } = require('../utils/mongo');
 
 const router = express.Router();
 
-// GET /api/partner/orders/today
-router.get('/orders/today', verifyToken('partner'), (req, res) => {
-  const db = getDB();
+router.get('/orders/today', verifyToken('partner'), asyncHandler(async (req, res) => {
   const today = getISTDateString();
-  const orders = db.prepare(`
-    SELECT o.*, c.name as customer_name, c.phone, c.address_line1, c.address_line2,
-           c.area, c.landmark, c.pincode, c.meal_preference, c.special_instructions
-    FROM orders o
-    JOIN customers c ON o.customer_id = c.id
-    WHERE o.partner_id = ? AND o.delivery_date = ? AND o.status != 'cancelled'
-    ORDER BY c.area, c.name
-  `).all(req.user.id, today);
-  res.json({ orders, date: today });
-});
+  const orders = await Order.find({
+    partner_id: req.user.id,
+    delivery_date: today,
+    status: { $ne: 'cancelled' },
+  })
+    .populate('customer_id', 'name phone address_line1 address_line2 area landmark pincode meal_preference special_instructions')
+    .sort({ 'customer_id.area': 1, 'customer_id.name': 1 });
 
-// PUT /api/partner/orders/:id/status
-router.put('/orders/:id/status', verifyToken('partner'), (req, res) => {
-  const db = getDB();
+  const serializedOrders = orders.map((order) => {
+    const item = serializeDoc(order);
+    item.customer_name = order.customer_id?.name || null;
+    item.phone = order.customer_id?.phone || null;
+    item.address_line1 = order.customer_id?.address_line1 || null;
+    item.address_line2 = order.customer_id?.address_line2 || null;
+    item.area = order.customer_id?.area || null;
+    item.landmark = order.customer_id?.landmark || null;
+    item.pincode = order.customer_id?.pincode || null;
+    item.meal_preference = order.customer_id?.meal_preference || null;
+    item.special_instructions = order.customer_id?.special_instructions || null;
+    return item;
+  });
+
+  res.json({ orders: serializedOrders, date: today });
+}));
+
+router.put('/orders/:id/status', verifyToken('partner'), asyncHandler(async (req, res) => {
   const { status } = req.body;
   const validTransitions = { confirmed: 'picked_up', picked_up: 'in_transit', in_transit: 'delivered' };
 
-  const order = db.prepare('SELECT * FROM orders WHERE id = ? AND partner_id = ?').get(req.params.id, req.user.id);
+  const order = await Order.findOne({ _id: req.params.id, partner_id: req.user.id });
   if (!order) return res.status(404).json({ error: 'NOT_FOUND' });
 
   const nextStatus = validTransitions[order.status];
@@ -36,80 +48,107 @@ router.put('/orders/:id/status', verifyToken('partner'), (req, res) => {
     return res.status(400).json({ error: 'INVALID_TRANSITION', message: `Cannot move from ${order.status} to ${status}` });
   }
 
+  order.status = status;
   const tsField = { picked_up: 'status_picked_up_at', in_transit: 'status_in_transit_at', delivered: 'status_delivered_at' }[status];
-  db.prepare(`UPDATE orders SET status = ?, ${tsField} = datetime('now') WHERE id = ?`).run(status, req.params.id);
+  if (tsField) order[tsField] = new Date();
+  await order.save();
 
   onOrderStatusChange(order, status).catch(() => {});
 
   res.json({ success: true, status });
-});
+}));
 
-// PUT /api/partner/duty
-router.put('/duty', verifyToken('partner'), (req, res) => {
-  const db = getDB();
+router.put('/duty', verifyToken('partner'), asyncHandler(async (req, res) => {
   const { isOnDuty } = req.body;
-  db.prepare('UPDATE delivery_partners SET is_on_duty = ? WHERE id = ?').run(isOnDuty ? 1 : 0, req.user.id);
+  await DeliveryPartner.updateOne({ _id: req.user.id }, { $set: { is_on_duty: !!isOnDuty } });
   res.json({ success: true, isOnDuty: !!isOnDuty });
-});
+}));
 
-// GET /api/partner/profile
-router.get('/profile', verifyToken('partner'), (req, res) => {
-  const db = getDB();
-  const partner = db.prepare('SELECT * FROM delivery_partners WHERE id = ?').get(req.user.id);
-  res.json({ partner });
-});
+router.get('/profile', verifyToken('partner'), asyncHandler(async (req, res) => {
+  const partner = await DeliveryPartner.findById(req.user.id);
+  res.json({ partner: partner ? serializeDoc(partner) : null });
+}));
 
-// Admin: GET /api/admin/partners
-router.get('/', verifyToken('admin'), (req, res) => {
-  const db = getDB();
+router.get('/', verifyToken('admin'), asyncHandler(async (_req, res) => {
   const today = getISTDateString();
-  const partners = db.prepare(`
-    SELECT dp.*,
-      (SELECT COUNT(*) FROM orders o WHERE o.partner_id = dp.id AND o.delivery_date = ? AND o.status != 'cancelled') as today_total,
-      (SELECT COUNT(*) FROM orders o WHERE o.partner_id = dp.id AND o.delivery_date = ? AND o.status = 'delivered') as today_delivered
-    FROM delivery_partners dp ORDER BY dp.name
-  `).all(today, today);
-  res.json({ partners });
-});
+  const partners = await DeliveryPartner.find().sort({ name: 1 });
+  const partnerIds = partners.map((partner) => partner._id);
 
-// Admin: POST /api/admin/partners
+  const stats = await Order.aggregate([
+    {
+      $match: {
+        partner_id: { $in: partnerIds },
+        delivery_date: today,
+      },
+    },
+    {
+      $group: {
+        _id: '$partner_id',
+        today_total: {
+          $sum: {
+            $cond: [{ $ne: ['$status', 'cancelled'] }, 1, 0],
+          },
+        },
+        today_delivered: {
+          $sum: {
+            $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  const statMap = new Map(stats.map((item) => [String(item._id), item]));
+  const serializedPartners = partners.map((partner) => {
+    const item = serializeDoc(partner);
+    const stat = statMap.get(item.id);
+    item.today_total = stat?.today_total || 0;
+    item.today_delivered = stat?.today_delivered || 0;
+    return item;
+  });
+
+  res.json({ partners: serializedPartners });
+}));
+
 router.post('/', verifyToken('admin'),
   body('name').notEmpty(),
   body('phone').isLength({ min: 10, max: 10 }).isNumeric(),
-  (req, res) => {
+  asyncHandler(async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR' });
 
-    const db = getDB();
     const { name, phone, vehicleType, areas } = req.body;
+
     try {
-      const result = db.prepare(`
-        INSERT INTO delivery_partners (name, phone, vehicle_type, area_coverage)
-        VALUES (?, ?, ?, ?)
-      `).run(name, phone, vehicleType || 'bike', JSON.stringify(areas || []));
-      const partner = db.prepare('SELECT * FROM delivery_partners WHERE id = ?').get(result.lastInsertRowid);
-      res.json({ success: true, partner });
-    } catch (e) {
-      if (e.message.includes('UNIQUE')) return res.status(400).json({ error: 'PHONE_EXISTS', message: 'Phone number already registered' });
-      throw e;
+      const partner = await DeliveryPartner.create({
+        name,
+        phone,
+        vehicle_type: vehicleType || 'bike',
+        area_coverage: Array.isArray(areas) ? areas : [],
+      });
+      res.json({ success: true, partner: serializeDoc(partner) });
+    } catch (error) {
+      if (error?.code === 11000) {
+        return res.status(400).json({ error: 'PHONE_EXISTS', message: 'Phone number already registered' });
+      }
+      throw error;
     }
-  }
+  })
 );
 
-// Admin: PUT /api/admin/partners/:id
-router.put('/:id', verifyToken('admin'), (req, res) => {
-  const db = getDB();
+router.put('/:id', asyncHandler(async (req, res) => {
   const { status, isOnDuty, vehicleType, areas } = req.body;
-  const updates = [];
-  const values = [];
-  if (status !== undefined) { updates.push('status = ?'); values.push(status); }
-  if (isOnDuty !== undefined) { updates.push('is_on_duty = ?'); values.push(isOnDuty ? 1 : 0); }
-  if (vehicleType) { updates.push('vehicle_type = ?'); values.push(vehicleType); }
-  if (areas) { updates.push('area_coverage = ?'); values.push(JSON.stringify(areas)); }
-  if (!updates.length) return res.status(400).json({ error: 'NO_FIELDS' });
-  values.push(req.params.id);
-  db.prepare(`UPDATE delivery_partners SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+  const update = {};
+
+  if (status !== undefined) update.status = status;
+  if (isOnDuty !== undefined) update.is_on_duty = isOnDuty;
+  if (vehicleType !== undefined) update.vehicle_type = vehicleType;
+  if (areas !== undefined) update.area_coverage = Array.isArray(areas) ? areas : [];
+console.log(update);
+  if (!Object.keys(update).length) return res.status(400).json({ error: 'NO_FIELDS' });
+
+  await DeliveryPartner.updateOne({ _id: req.params.id }, { $set: update });
   res.json({ success: true });
-});
+}));
 
 module.exports = router;

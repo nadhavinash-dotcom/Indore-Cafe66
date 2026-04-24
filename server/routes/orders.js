@@ -1,86 +1,110 @@
 const express = require('express');
-const { getDB } = require('../config/database');
 const { getISTDateString } = require('../services/timeService');
 const { verifyToken } = require('../middleware/auth');
+const { Customer, DeliveryPartner, Order } = require('../models');
+const { asyncHandler } = require('../utils/asyncHandler');
+const { serializeDoc } = require('../utils/mongo');
 
 const router = express.Router();
 
-// GET /api/orders/today
-router.get('/today', verifyToken('customer'), (req, res) => {
-  const db = getDB();
+router.get('/today', verifyToken('customer'), asyncHandler(async (req, res) => {
   const today = getISTDateString();
-  const orders = db.prepare(`
-    SELECT o.*, dp.name as partner_name, dp.phone as partner_phone
-    FROM orders o
-    LEFT JOIN delivery_partners dp ON o.partner_id = dp.id
-    WHERE o.customer_id = ? AND o.delivery_date = ?
-    ORDER BY o.meal_type
-  `).all(req.user.id, today);
-  res.json({ orders, date: today });
-});
+  const orders = await Order.find({ customer_id: req.user.id, delivery_date: today })
+    .populate('partner_id', 'name phone')
+    .sort({ meal_type: 1 });
 
-// GET /api/orders/history
-router.get('/history', verifyToken('customer'), (req, res) => {
-  const db = getDB();
-  const { page = 1, limit = 20 } = req.query;
-  const offset = (page - 1) * limit;
-  const orders = db.prepare(`
-    SELECT o.*, dp.name as partner_name
-    FROM orders o
-    LEFT JOIN delivery_partners dp ON o.partner_id = dp.id
-    WHERE o.customer_id = ?
-    ORDER BY o.delivery_date DESC, o.meal_type
-    LIMIT ? OFFSET ?
-  `).all(req.user.id, Number(limit), Number(offset));
-  const total = db.prepare('SELECT COUNT(*) as c FROM orders WHERE customer_id = ?').get(req.user.id).c;
-  res.json({ orders, total, page: Number(page) });
-});
+  const serializedOrders = orders.map((order) => {
+    const item = serializeDoc(order);
+    item.partner_name = order.partner_id?.name || null;
+    item.partner_phone = order.partner_id?.phone || null;
+    return item;
+  });
 
-// GET /api/orders/:id
-router.get('/:id', verifyToken('customer'), (req, res) => {
-  const db = getDB();
-  const order = db.prepare(`
-    SELECT o.*, dp.name as partner_name, dp.phone as partner_phone
-    FROM orders o
-    LEFT JOIN delivery_partners dp ON o.partner_id = dp.id
-    WHERE o.id = ? AND o.customer_id = ?
-  `).get(req.params.id, req.user.id);
+  res.json({ orders: serializedOrders, date: today });
+}));
+
+router.get('/history', verifyToken('customer'), asyncHandler(async (req, res) => {
+  const page = Number(req.query.page || 1);
+  const limit = Number(req.query.limit || 20);
+  const skip = (page - 1) * limit;
+
+  const [orders, total] = await Promise.all([
+    Order.find({ customer_id: req.user.id })
+      .populate('partner_id', 'name')
+      .sort({ delivery_date: -1, meal_type: 1 })
+      .skip(skip)
+      .limit(limit),
+    Order.countDocuments({ customer_id: req.user.id }),
+  ]);
+
+  const serializedOrders = orders.map((order) => {
+    const item = serializeDoc(order);
+    item.partner_name = order.partner_id?.name || null;
+    return item;
+  });
+
+  res.json({ orders: serializedOrders, total, page });
+}));
+
+router.get('/:id', verifyToken('customer'), asyncHandler(async (req, res) => {
+  const order = await Order.findOne({ _id: req.params.id, customer_id: req.user.id })
+    .populate('partner_id', 'name phone');
+
   if (!order) return res.status(404).json({ error: 'NOT_FOUND' });
-  res.json({ order });
-});
 
-// Admin: GET /api/admin/orders
-router.get('/', verifyToken('admin'), (req, res) => {
-  const db = getDB();
+  const serializedOrder = serializeDoc(order);
+  serializedOrder.partner_name = order.partner_id?.name || null;
+  serializedOrder.partner_phone = order.partner_id?.phone || null;
+
+  res.json({ order: serializedOrder });
+}));
+
+router.get('/', verifyToken('admin'), asyncHandler(async (req, res) => {
   const { date, status, partnerId, area, page = 1, limit = 50 } = req.query;
-  let sql = `
-    SELECT o.*, c.name as customer_name, c.phone, c.area, c.address_line1, c.meal_preference,
-           dp.name as partner_name
-    FROM orders o
-    JOIN customers c ON o.customer_id = c.id
-    LEFT JOIN delivery_partners dp ON o.partner_id = dp.id
-    WHERE 1=1
-  `;
-  const params = [];
-  if (date) { sql += ' AND o.delivery_date = ?'; params.push(date); }
-  if (status) { sql += ' AND o.status = ?'; params.push(status); }
-  if (partnerId) { sql += ' AND o.partner_id = ?'; params.push(partnerId); }
-  if (area) { sql += ' AND c.area = ?'; params.push(area); }
-  sql += ' ORDER BY o.delivery_date DESC, o.created_at DESC LIMIT ? OFFSET ?';
-  params.push(Number(limit), (Number(page) - 1) * Number(limit));
+  const pageNumber = Number(page);
+  const limitNumber = Number(limit);
+  const skip = (pageNumber - 1) * limitNumber;
 
-  const orders = db.prepare(sql).all(...params);
-  const total = db.prepare('SELECT COUNT(*) as c FROM orders').get().c;
-  res.json({ orders, total });
-});
+  const filters = {};
+  if (date) filters.delivery_date = date;
+  if (status) filters.status = status;
+  if (partnerId) filters.partner_id = partnerId;
 
-// Admin: PUT /api/admin/orders/:id/status
-router.put('/:id/status', verifyToken('admin'), (req, res) => {
-  const db = getDB();
+  if (area) {
+    const customersInArea = await Customer.find({ area }, '_id');
+    filters.customer_id = { $in: customersInArea.map((customer) => customer._id) };
+  }
+
+  const [orders, total] = await Promise.all([
+    Order.find(filters)
+      .populate('customer_id', 'name phone area address_line1 meal_preference')
+      .populate('partner_id', 'name')
+      .sort({ delivery_date: -1, created_at: -1 })
+      .skip(skip)
+      .limit(limitNumber),
+    Order.countDocuments(filters),
+  ]);
+
+  const serializedOrders = orders.map((order) => {
+    const item = serializeDoc(order);
+    item.customer_name = order.customer_id?.name || null;
+    item.phone = order.customer_id?.phone || null;
+    item.area = order.customer_id?.area || null;
+    item.address_line1 = order.customer_id?.address_line1 || null;
+    item.meal_preference = order.customer_id?.meal_preference || null;
+    item.partner_name = order.partner_id?.name || null;
+    return item;
+  });
+
+  res.json({ orders: serializedOrders, total });
+}));
+
+router.put('/:id/status', verifyToken('admin'), asyncHandler(async (req, res) => {
   const { status, partnerId } = req.body;
   const validStatuses = ['pending', 'confirmed', 'picked_up', 'in_transit', 'delivered', 'cancelled'];
   if (!validStatuses.includes(status)) return res.status(400).json({ error: 'INVALID_STATUS' });
 
+  const update = { status };
   const timestampField = {
     confirmed: 'status_confirmed_at',
     picked_up: 'status_picked_up_at',
@@ -88,23 +112,17 @@ router.put('/:id/status', verifyToken('admin'), (req, res) => {
     delivered: 'status_delivered_at',
   }[status];
 
-  let sql = `UPDATE orders SET status = ?`;
-  const params = [status];
-  if (timestampField) { sql += `, ${timestampField} = datetime('now')`; }
-  if (partnerId) { sql += `, partner_id = ?`; params.push(partnerId); }
-  sql += ` WHERE id = ?`;
-  params.push(req.params.id);
+  if (timestampField) update[timestampField] = new Date();
+  if (partnerId) update.partner_id = partnerId;
 
-  db.prepare(sql).run(...params);
+  await Order.updateOne({ _id: req.params.id }, { $set: update });
   res.json({ success: true });
-});
+}));
 
-// Admin: PUT /api/admin/orders/:id/reassign
-router.put('/:id/reassign', verifyToken('admin'), (req, res) => {
-  const db = getDB();
+router.put('/:id/reassign', verifyToken('admin'), asyncHandler(async (req, res) => {
   const { partnerId } = req.body;
-  db.prepare('UPDATE orders SET partner_id = ? WHERE id = ?').run(partnerId, req.params.id);
+  await Order.updateOne({ _id: req.params.id }, { $set: { partner_id: partnerId || null } });
   res.json({ success: true });
-});
+}));
 
 module.exports = router;
