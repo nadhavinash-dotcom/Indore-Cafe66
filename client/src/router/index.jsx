@@ -31,10 +31,10 @@ import Support from '../pages/admin/Support';
 import Settings from '../pages/admin/Settings';
 
 const router = createBrowserRouter([
-  { path: '/', element: <Navigate to="/customer" replace /> },
+  { path: '/', element: <Navigate to="/customer/login" replace /> },
 
   // Customer portal
-  { path: '/customer', element: <Splash /> },
+  // { path: '/customer', element: <Splash /> },
   { path: '/customer/login', element: <CustomerLogin /> },
   { path: '/customer/plans', element: <PlanSelection /> },
   { path: '/customer/address', element: <ProtectedRoute role="customer"><AddressForm /></ProtectedRoute> },

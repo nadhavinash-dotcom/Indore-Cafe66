@@ -82,7 +82,7 @@ export default function Settings() {
             onChange={e => setForm({ ...form, coupons: e.target.value })}
             rows={4}
             className="w-full bg-ci-black border border-ci-black-border text-ci-white placeholder-ci-white-muted px-4 py-3 rounded-xl focus:border-ci-gold text-sm font-mono"
-            placeholder='[{"code":"INDOORI10","type":"percent","value":10}]'
+            placeholder='[{"code":"Indoor10","type":"percent","value":10}]'
           />
           <Button className="mt-3" size="sm" loading={saving} onClick={() => handleSave(['coupons'])}>Save Coupons</Button>
         </Card>

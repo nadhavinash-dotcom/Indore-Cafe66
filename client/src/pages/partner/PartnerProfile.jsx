@@ -14,7 +14,7 @@ export default function PartnerProfile() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/partner/profile').then(res => setProfile(res.data.partner)).finally(() => setLoading(false));
+    api.get('/partner/profile').then(res => setProfile(res?.data?.partner)).finally(() => setLoading(false));
   }, []);
 
   function handleLogout() {
@@ -24,7 +24,7 @@ export default function PartnerProfile() {
 
   if (loading) return <PartnerLayout><div className="flex justify-center py-20"><Spinner size="lg" /></div></PartnerLayout>;
 
-  const areas = profile?.area_coverage ? JSON.parse(profile.area_coverage) : [];
+  const areas = profile?.area_coverage ? (profile.area_coverage) : [];
 
   return (
     <PartnerLayout>

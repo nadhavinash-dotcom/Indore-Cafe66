@@ -10,7 +10,7 @@ import Input from '../../components/ui/Input';
 export default function AdminLogin() {
   const navigate = useNavigate();
   const { setAdmin } = useAuthStore();
-  const [email, setEmail] = useState('admin@cafeindoori.com');
+  const [email, setEmail] = useState('admin@cafeIndoor.com');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,13 +33,13 @@ export default function AdminLogin() {
     <div className="min-h-screen bg-ci-black flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-playfair text-4xl text-ci-gold font-bold">Cafe Indoori</h1>
+          <h1 className="font-playfair text-4xl text-ci-gold font-bold">Cafe Indoor</h1>
           <p className="text-ci-white-muted mt-2">Admin Portal</p>
         </div>
         <div className="bg-ci-black-soft border border-ci-black-border rounded-card p-6">
-          <h2 className="text-ci-white font-semibold text-lg mb-6">Login Karein</h2>
+          <h2 className="text-ci-white font-semibold text-lg mb-6">Log in</h2>
           <form onSubmit={handleLogin} className="space-y-4">
-            <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="admin@cafeindoori.com" />
+            <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="admin@cafeIndoor.com" />
             <div>
               <label className="block text-ci-gold text-sm font-medium mb-1.5">Password</label>
               <div className="relative">

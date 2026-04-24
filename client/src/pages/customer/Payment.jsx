@@ -1,104 +1,118 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Tag, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '../../lib/api';
 import useAuthStore from '../../store/authStore';
 import useRazorpay from '../../hooks/useRazorpay';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
 import CustomerLayout from '../../components/layout/CustomerLayout';
-
-const PRICES = {
-  monthly: { both: 4800, lunch: 2880, dinner: 2880 },
-  trial: { both: 1400, lunch: 840, dinner: 840 },
-};
-const COUPONS = { INDOORI10: { type: 'percent', value: 10 }, TRIAL50: { type: 'flat', value: 50 } };
+import {
+  addDaysToISTDate,
+  formatISTDate,
+  getMealTypeLabel,
+  getPlanTypeLabel,
+} from '../../lib/timeUtils';
 
 export default function Payment() {
   const navigate = useNavigate();
   const { customer } = useAuthStore();
   const { loading, error, initiatePayment } = useRazorpay();
-  const plan = JSON.parse(sessionStorage.getItem('ci_plan') || '{"planType":"monthly","mealType":"both"}');
-  const [coupon, setCoupon] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const plan = JSON.parse(sessionStorage.getItem('ci_plan') || 'null');
 
-  const basePrice = PRICES[plan.planType]?.[plan.mealType] || 0;
-  const gst = Math.floor(basePrice * 0.18);
-  let discount = 0;
-  if (appliedCoupon) {
-    if (appliedCoupon.type === 'percent') discount = Math.floor((basePrice + gst) * appliedCoupon.value / 100);
-    else discount = appliedCoupon.value;
-  }
-  const total = basePrice + gst - discount;
+  useEffect(() => {
+    if (!plan) navigate('/customer/plans', { replace: true });
+  }, [navigate, plan]);
 
-  function applyCoupon() {
-    const c = COUPONS[coupon.toUpperCase()];
-    if (c) { setAppliedCoupon(c); toast.success('Coupon apply ho gaya!'); }
-    else toast.error('Invalid coupon');
-  }
+  if (!plan) return null;
+
+  const total = plan.totalPrice || 0;
+  const endDate = addDaysToISTDate(plan.selectedStartDate, (plan.durationDays || 7) - 1);
 
   async function handlePay() {
+    if (!customer) {
+      toast.error('Login required');
+      navigate('/customer/login');
+      return;
+    }
+
     initiatePayment({
       planType: plan.planType,
       mealType: plan.mealType,
-      couponCode: appliedCoupon ? coupon : undefined,
+      subscriptionPlan: plan,
       customer: { name: customer?.name, phone: customer?.phone },
       onSuccess: (data) => {
         sessionStorage.removeItem('ci_plan');
-        navigate('/customer/success', { state: { subscription: data.subscription } });
+        navigate('/customer/success', {
+          state: {
+            subscription: {
+              ...plan,
+              ...data.subscription,
+              start_date: data.subscription?.start_date || plan.selectedStartDate,
+              end_date: data.subscription?.end_date || endDate,
+            },
+          },
+        });
       },
     });
   }
 
   return (
     <CustomerLayout>
-      <div className="p-4 pb-8 max-w-md mx-auto">
-        <h1 className="font-playfair text-2xl text-ci-white font-bold pt-4 mb-6">Payment</h1>
+      <div className="p-4 pb-8 max-w-md mx-auto space-y-4">
+        <div className="pt-4">
+          <h1 className="font-playfair text-2xl text-ci-white font-bold">Checkout</h1>
+          <p className="text-ci-white-muted text-sm mt-1">Review the subscription details you selected.</p>
+        </div>
 
-        {/* Order Summary */}
-        <div className="bg-ci-black-soft border-l-4 border-l-ci-gold border border-ci-black-border rounded-card p-4 mb-4 space-y-2">
-          <h3 className="text-ci-white font-semibold">Order Summary</h3>
-          <div className="flex justify-between text-sm">
-            <span className="text-ci-white-muted capitalize">{plan.planType} Plan — {plan.mealType}</span>
-            <span className="text-ci-white">₹{basePrice}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-ci-white-muted">GST (18%)</span>
-            <span className="text-ci-white">₹{gst}</span>
-          </div>
-          {appliedCoupon && (
-            <div className="flex justify-between text-sm">
-              <span className="text-ci-gold flex items-center gap-1"><Tag size={12} /> {coupon}</span>
-              <span className="text-ci-success">-₹{discount}</span>
+        <div className="bg-ci-black-soft border border-ci-black-border rounded-card p-5 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-ci-white font-semibold">Subscription Summary</p>
+              <p className="text-ci-white-muted text-sm mt-1">{getPlanTypeLabel(plan.planType)} • {getMealTypeLabel(plan.mealType)}</p>
             </div>
-          )}
-          <div className="flex justify-between text-lg font-bold border-t border-ci-black-border pt-2 mt-2">
-            <span className="text-ci-white">Total</span>
-            <span className="text-ci-gold">₹{total}</span>
+            <p className="text-ci-gold text-2xl font-bold">Rs {total}</p>
+          </div>
+
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-ci-white-muted">Selected start date</span>
+              <span className="text-ci-white">{formatISTDate(plan.selectedStartDate)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-ci-white-muted">Subscription end date</span>
+              <span className="text-ci-white">{formatISTDate(endDate)}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2 rounded-xl bg-ci-gold/10 border border-ci-gold/20 p-4">
+            <p className="text-ci-white font-medium">Meal activation</p>
+            {plan.mealStartDates?.lunch && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-ci-white-muted">Lunch</span>
+                <span className="text-ci-white">{formatISTDate(plan.mealStartDates.lunch)}</span>
+              </div>
+            )}
+            {plan.mealStartDates?.dinner && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-ci-white-muted">Dinner</span>
+                <span className="text-ci-white">{formatISTDate(plan.mealStartDates.dinner)}</span>
+              </div>
+            )}
+            {plan.scheduleMessage && (
+              <p className="text-ci-white-muted text-xs">{plan.scheduleMessage}</p>
+            )}
           </div>
         </div>
 
-        {/* Coupon */}
-        {!appliedCoupon ? (
-          <div className="flex gap-2 mb-4">
-            <Input value={coupon} onChange={e => setCoupon(e.target.value.toUpperCase())} placeholder="Coupon code (INDOORI10)" className="flex-1" />
-            <Button variant="secondary" onClick={applyCoupon}>Apply</Button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 bg-ci-success/10 border border-ci-success/30 rounded-xl px-4 py-2 mb-4">
-            <Tag size={14} className="text-ci-success" />
-            <span className="text-ci-success text-sm flex-1">{coupon} applied</span>
-            <button onClick={() => { setAppliedCoupon(null); setCoupon(''); }}><X size={14} className="text-ci-white-muted" /></button>
-          </div>
-        )}
+        <div className="bg-ci-black-soft border border-ci-black-border rounded-card p-5 space-y-2">
+          <p className="text-ci-white font-semibold">What happens next</p>
+          <p className="text-ci-white-muted text-sm">Once payment succeeds, your subscription will become active and appear on your dashboard.</p>
+        </div>
 
-        {error && <p className="text-ci-error text-sm mb-3">{error}</p>}
+        {error && <p className="text-ci-error text-sm">{error}</p>}
 
         <Button size="lg" loading={loading} onClick={handlePay}>
-          Razorpay se Pay Karo — ₹{total}
+          Pay Rs {total}
         </Button>
-        <p className="text-ci-white-muted text-xs text-center mt-3">Secure payment via Razorpay</p>
       </div>
     </CustomerLayout>
   );

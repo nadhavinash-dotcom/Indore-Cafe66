@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import Button from '../../components/ui/Button';
-import { formatISTDate } from '../../lib/timeUtils';
+import { formatISTDate, getMealTypeLabel, getPlanTypeLabel } from '../../lib/timeUtils';
 
 export default function PaymentSuccess() {
   const { state } = useLocation();
@@ -17,13 +17,17 @@ export default function PaymentSuccess() {
       </div>
 
       <h1 className="font-playfair text-3xl text-ci-gold font-bold mb-2">Subscription Confirmed!</h1>
-      <p className="text-ci-white-muted text-base mb-8">Aapka tiffin tayar ho raha hai!</p>
+      <p className="text-ci-white-muted text-base mb-8">Your meal plan is now active.</p>
 
       {sub && (
         <div className="bg-ci-black-soft border border-ci-black-border rounded-card p-5 mb-8 w-full max-w-xs text-left space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-ci-white-muted">Plan</span>
-            <span className="text-ci-white capitalize">{sub.plan_type} — {sub.meal_type}</span>
+            <span className="text-ci-white-muted">Duration</span>
+            <span className="text-ci-white">{getPlanTypeLabel(sub.plan_type || sub.planType)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-ci-white-muted">Meals</span>
+            <span className="text-ci-white">{getMealTypeLabel(sub.meal_type || sub.mealType)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-ci-white-muted">Start Date</span>
@@ -33,6 +37,18 @@ export default function PaymentSuccess() {
             <span className="text-ci-white-muted">End Date</span>
             <span className="text-ci-white">{formatISTDate(sub.end_date)}</span>
           </div>
+          {sub.mealStartDates?.lunch && (
+            <div className="flex justify-between text-sm">
+              <span className="text-ci-white-muted">Lunch starts</span>
+              <span className="text-ci-white">{formatISTDate(sub.mealStartDates.lunch)}</span>
+            </div>
+          )}
+          {sub.mealStartDates?.dinner && (
+            <div className="flex justify-between text-sm">
+              <span className="text-ci-white-muted">Dinner starts</span>
+              <span className="text-ci-white">{formatISTDate(sub.mealStartDates.dinner)}</span>
+            </div>
+          )}
           {sub.payment_id && (
             <div className="flex justify-between text-sm">
               <span className="text-ci-white-muted">Payment ID</span>
@@ -43,7 +59,7 @@ export default function PaymentSuccess() {
       )}
 
       <Button size="lg" onClick={() => navigate('/customer/dashboard')} className="max-w-xs w-full">
-        Dashboard Dekho
+        Go to Dashboard
       </Button>
     </div>
   );

@@ -2,7 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { getMealAvailability, isCutoffPassed, getISTDateString } = require('../services/timeService');
 const { verifyToken } = require('../middleware/auth');
-const { Order, Subscription } = require('../models');
+const { Order, Subscription, DeliveryPartner } = require('../models');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { serializeDoc } = require('../utils/mongo');
 
@@ -20,15 +20,27 @@ router.post('/book', verifyToken('customer'),
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid data' });
 
-    const { mealType, date, specialNote } = req.body;
+    const { mealType, date, specialNote, profile } = req.body;
     const customerId = req.user.id;
     const today = getISTDateString();
     const targetDate = date || today;
 
+    // 1. Location Matching Logic
+    // We assume profile.address_line1 or a similar field contains the area name
+    const userArea = profile?.area || profile?.address_line1;
+
+    // Find one partner who covers this area, is on duty, and is active
+    const assignedPartner = await DeliveryPartner.findOne({
+      area_coverage: { $in: [new RegExp(`^${userArea.trim()}$`, 'i')] },
+      is_on_duty: true,
+      status: 'active',      
+    });
+
+
     if (targetDate === today && isCutoffPassed(mealType)) {
       return res.status(400).json({
         error: 'CUTOFF_PASSED',
-        message: `${mealType === 'lunch' ? 'Lunch' : 'Dinner'} booking band ho gayi hai. Kal try karo.`,
+        message: `${mealType === 'lunch' ? 'Lunch' : 'Dinner'} booking over.Try again tomorrow.`,
       });
     }
 
@@ -39,20 +51,20 @@ router.post('/book', verifyToken('customer'),
     }).sort({ created_at: -1 });
 
     if (!sub) {
-      return res.status(400).json({ error: 'NO_SUBSCRIPTION', message: 'Koi active subscription nahi hai.' });
+      return res.status(400).json({ error: 'NO_SUBSCRIPTION', message: 'No active subscription found.' });
     }
 
     if (sub.meal_type !== 'both' && sub.meal_type !== mealType) {
-      return res.status(400).json({ error: 'MEAL_NOT_IN_PLAN', message: `Aapke plan mein ${mealType} nahi hai.` });
+      return res.status(400).json({ error: 'MEAL_NOT_IN_PLAN', message: `Meal type ${mealType} is not included in your subscription.` });
     }
 
     if (sub.pause_start && sub.pause_end && targetDate >= sub.pause_start && targetDate <= sub.pause_end) {
-      return res.status(400).json({ error: 'SUBSCRIPTION_PAUSED', message: `Subscription ${sub.pause_start} se ${sub.pause_end} tak paused hai.` });
+      return res.status(400).json({ error: 'SUBSCRIPTION_PAUSED', message: `Subscription ${sub.pause_start} to ${sub.pause_end} is paused.` });
     }
 
     const existing = await Order.findOne({ customer_id: customerId, meal_type: mealType, delivery_date: targetDate });
     if (existing) {
-      return res.status(400).json({ error: 'ORDER_EXISTS', message: 'Is meal ka order pehle se hai.' });
+      return res.status(400).json({ error: 'ORDER_EXISTS', message: 'An order for this meal already exists.' });
     }
 
     const order = await Order.create({
@@ -62,6 +74,8 @@ router.post('/book', verifyToken('customer'),
       delivery_date: targetDate,
       status: 'confirmed',
       special_note: specialNote || null,
+      partner_id: assignedPartner ? assignedPartner._id : null, // Assign if found
+
     });
 
     res.json({ success: true, order: serializeDoc(order) });

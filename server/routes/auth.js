@@ -20,7 +20,6 @@ router.post('/send-otp', otpLimiter,
     const { phone } = req.body;
     const result = sendOtp(phone);
     if (!result.success) return res.status(429).json(result);
-    console.log(`[OTP] Sent OTP to ${phone}`,);
     return res.json({ success: true, message: 'OTP bheja gaya', ...(result.otp ? { otp: result.otp } : {}) });
   }
 );
@@ -32,12 +31,12 @@ router.post('/verify-otp',
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Phone aur OTP sahi format mein daalein' });
 
-    const { phone, otp } = req.body;
+    const { phone, otp, loginrole } = req.body;
     const result = verifyOtp(phone, otp);
     if (!result.success) return res.status(400).json(result);
 
     const partner = await DeliveryPartner.findOne({ phone, status: 'active' });
-    if (partner) {
+    if (partner && loginrole === "partner") {
       const token = signToken({ id: partner.id, phone, role: 'partner', name: partner.name });
       return res.json({
         success: true,

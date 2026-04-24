@@ -35,63 +35,69 @@ export default function PartnerDashboard() {
       const res = await api.put('/partner/duty', { isOnDuty: !isOnDuty });
       setIsOnDuty(res.data.isOnDuty);
       setPartner({ ...partner, isOnDuty: res.data.isOnDuty }, localStorage.getItem('ci_partner_token'));
-      toast.success(res.data.isOnDuty ? 'Aap ab On Duty hain!' : 'Aap ab Off Duty hain');
+      toast.success(res.data.isOnDuty ? 'You are now on duty.' : 'You are now off duty.');
     } finally {
       setToggling(false);
     }
   }
 
-  useEffect(() => { load(); const i = setInterval(load, 60000); return () => clearInterval(i); }, []);
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const total = orders.length;
-  const completed = orders.filter(o => o.status === 'delivered').length;
-  const pending = orders.filter(o => !['delivered', 'cancelled'].includes(o.status)).length;
+  const completed = orders.filter((order) => order.status === 'delivered').length;
+  const pending = orders.filter((order) => !['delivered', 'cancelled'].includes(order.status)).length;
 
   return (
     <PartnerLayout>
       <div className="p-4 space-y-4 max-w-md mx-auto">
-        {/* Header */}
         <div className="flex items-center justify-between pt-4">
           <div>
-            <h1 className="font-playfair text-xl text-ci-white font-bold">Namaste, {partner?.name?.split(' ')[0]}!</h1>
+            <h1 className="font-playfair text-xl text-ci-white font-bold">Welcome, {partner?.name?.split(' ')[0]}!</h1>
             <p className="text-ci-white-muted text-xs mt-0.5">{formatISTDate(new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Kolkata' }))}</p>
           </div>
-          {/* On Duty Toggle */}
-          <button onClick={toggleDuty} disabled={toggling}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-colors font-semibold text-sm ${isOnDuty ? 'bg-ci-gold border-ci-gold text-ci-black' : 'border-ci-black-border text-ci-white-muted'}`}>
+          <button
+            onClick={toggleDuty}
+            disabled={toggling}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-colors font-semibold text-sm ${isOnDuty ? 'bg-ci-gold border-ci-gold text-ci-black' : 'border-ci-black-border text-ci-white-muted'}`}
+          >
             {isOnDuty ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
             {isOnDuty ? 'On Duty' : 'Off Duty'}
           </button>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          {[['Total', total, Package, 'text-ci-gold'], ['Done', completed, CheckCircle, 'text-ci-success'], ['Pending', pending, Clock, 'text-ci-warning']].map(([label, val, Icon, color]) => (
+          {[['Total', total, Package, 'text-ci-gold'], ['Done', completed, CheckCircle, 'text-ci-success'], ['Pending', pending, Clock, 'text-ci-warning']].map(([label, value, Icon, color]) => (
             <Card key={label} className="text-center">
               <Icon size={18} className={`${color} mx-auto mb-1`} />
-              <p className={`text-2xl font-bold ${color}`}>{val}</p>
+              <p className={`text-2xl font-bold ${color}`}>{value}</p>
               <p className="text-ci-white-muted text-xs">{label}</p>
             </Card>
           ))}
         </div>
 
-        {/* Order List */}
         <div>
-          <h2 className="text-ci-white font-semibold mb-3">Aaj ke Orders</h2>
+          <h2 className="text-ci-white font-semibold mb-3">Today's Orders</h2>
           {loading ? <div className="flex justify-center py-10"><Spinner /></div> : (
             <>
               {orders.length === 0 && (
                 <Card className="text-center py-8">
-                  <p className="text-ci-white-muted">Koi orders assign nahi hue</p>
+                  <p className="text-ci-white-muted">No orders assigned yet.</p>
                 </Card>
               )}
               <div className="space-y-2">
                 {orders.sort((a, b) => {
-                  const order = ['confirmed', 'picked_up', 'in_transit', 'pending', 'delivered'];
-                  return order.indexOf(a.status) - order.indexOf(b.status);
-                }).map(order => (
-                  <Card key={order.id} onClick={() => navigate(`/partner/order/${order.id}`, { state: { order } })}
-                    className="cursor-pointer hover:border-ci-gold active:scale-[0.99] transition-transform">
+                  const orderStatus = ['confirmed', 'picked_up', 'in_transit', 'pending', 'delivered'];
+                  return orderStatus.indexOf(a.status) - orderStatus.indexOf(b.status);
+                }).map((order) => (
+                  <Card
+                    key={order.id}
+                    onClick={() => navigate(`/partner/order/${order.id}`, { state: { order } })}
+                    className="cursor-pointer hover:border-ci-gold active:scale-[0.99] transition-transform"
+                  >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -100,7 +106,7 @@ export default function PartnerDashboard() {
                             {order.meal_type}
                           </Badge>
                         </div>
-                        <p className="text-ci-white-muted text-xs">{order.area} · {order.address_line1?.slice(0, 30)}</p>
+                        <p className="text-ci-white-muted text-xs">{order.area} • {order.address_line1?.slice(0, 30)}</p>
                         <p className="text-ci-white-muted text-xs capitalize">{order.meal_preference}</p>
                       </div>
                       <Badge status={order.status}>{order.status}</Badge>

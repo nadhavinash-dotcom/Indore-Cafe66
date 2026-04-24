@@ -27,7 +27,7 @@ export default function AdminLayout({ children }) {
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col w-60 bg-ci-black-soft border-r border-ci-black-border fixed h-full">
         <div className="p-6 border-b border-ci-black-border">
-          <h1 className="font-playfair text-ci-gold text-xl font-bold">Cafe Indoori</h1>
+          <h1 className="font-playfair text-ci-gold text-xl font-bold">Cafe Indoor</h1>
           <p className="text-ci-white-muted text-xs mt-1">Admin Panel</p>
         </div>
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
@@ -56,7 +56,7 @@ export default function AdminLayout({ children }) {
 
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-20 bg-ci-black-soft border-b border-ci-black-border px-4 py-3 flex items-center justify-between">
-        <h1 className="font-playfair text-ci-gold text-lg font-bold">Cafe Indoori</h1>
+        <h1 className="font-playfair text-ci-gold text-lg font-bold">Cafe Indoor</h1>
         <button onClick={handleLogout} className="text-ci-white-muted">
           <LogOut size={20} />
         </button>

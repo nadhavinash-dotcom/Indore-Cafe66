@@ -67,8 +67,11 @@ export default function PartnersTable() {
                 <div className="flex-1">
                   <p className="text-ci-white font-semibold">{p.name}</p>
                   <p className="text-ci-white-muted text-sm">{p.phone} · {p.vehicle_type}</p>
-                  <p className="text-ci-white-muted text-xs mt-0.5">{p.area_coverage}</p>
-                </div>
+                  <p className="text-ci-white-muted text-xs mt-0.5">
+                    {p.area_coverage?.map(area =>
+                      area.charAt(0).toUpperCase() + area.slice(1).toLowerCase()
+                    ).join(', ')}
+                  </p>                </div>
                 <div className="text-center">
                   <p className="text-ci-gold font-bold text-lg">{p.today_delivered}/{p.today_total}</p>
                   <p className="text-ci-white-muted text-xs">Today</p>

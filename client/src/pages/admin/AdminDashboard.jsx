@@ -98,7 +98,7 @@ export default function AdminDashboard() {
                       </div>
                     </>
                   ) : (
-                    <p className="text-ci-white-muted text-sm">List abhi generate nahi hui</p>
+                    <p className="text-ci-white-muted text-sm">The list has not been generated yet.</p>
                   )}
                 </Card>
               );

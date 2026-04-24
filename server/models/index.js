@@ -35,6 +35,7 @@ const customerSchema = new mongoose.Schema({
   meal_preference: { type: String, default: 'veg' },
   special_instructions: { type: String, default: null },
   push_token: { type: String, default: null },
+  role: { type: String, default: 'customer' },
 }, baseOptions({ timestamps: { createdAt: 'created_at', updatedAt: false } }));
 
 const deliveryPartnerSchema = new mongoose.Schema({
@@ -45,6 +46,7 @@ const deliveryPartnerSchema = new mongoose.Schema({
   status: { type: String, default: 'active' },
   is_on_duty: { type: Boolean, default: true },
   push_token: { type: String, default: null },
+  role: { type: String, default: 'partner' },
 }, baseOptions({ timestamps: { createdAt: 'created_at', updatedAt: false } }));
 
 const subscriptionSchema = new mongoose.Schema({

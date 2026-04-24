@@ -13,11 +13,20 @@ import Input from '../../components/ui/Input';
 import Spinner from '../../components/ui/Spinner';
 import { formatISTDate, daysLeft } from '../../lib/timeUtils';
 
-const AREAS = ['Vijay Nagar', 'Palasia', 'Scheme 54', 'AB Road', 'Bengali Square', 'Rau', 'Nipania', 'Other'];
+const AREAS = [
+  "Adilabad", "Bhadradri Kothagudem", "Hanumakonda", "Hyderabad", 
+  "Jagtial", "Jangaon", "Jayashankar Bhupalpally", "Jogulamba Gadwal", 
+  "Kamareddy", "Karimnagar", "Khammam", "Kumuram Bheem Asifabad", 
+  "Mahabubabad", "Mahabubnagar", "Mancherial", "Medak", 
+  "Medchal-Malkajgiri", "Mulugu", "Nagarkurnool", "Nalgonda", 
+  "Narayanpet", "Nirmal", "Nizamabad", "Peddapalli", 
+  "Rajanna Sircilla", "Rangareddy", "Sangareddy", "Siddipet", 
+  "Suryapet", "Vikarabad", "Wanaparthy", "Warangal", "Yadadri Bhuvanagiri"
+];
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { customer, logoutCustomer } = useAuthStore();
+  const { logoutCustomer } = useAuthStore();
   const [profile, setProfile] = useState(null);
   const [sub, setSub] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,37 +52,42 @@ export default function Profile() {
     setSaving(true);
     try {
       await api.put('/customer/profile', editForm);
-      toast.success('Profile update ho gayi!');
+      toast.success('Profile updated successfully.');
       setEditing(false);
       load();
-    } catch { toast.error('Save nahi ho saka'); }
-    finally { setSaving(false); }
+    } catch {
+      toast.error('Unable to save changes.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handlePause() {
     try {
       await api.post('/customer/subscription/pause', pauseForm);
-      toast.success('Subscription pause ho jayegi!');
+      toast.success('Subscription pause scheduled.');
       setShowPause(false);
       load();
-    } catch (err) { toast.error(err.response?.data?.message || 'Error'); }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error');
+    }
   }
 
   async function handleCancel() {
-    if (!confirm('Kya aap sure hain ki subscription cancel karna chahte hain?')) return;
+    if (!confirm('Are you sure you want to cancel the subscription?')) return;
     await api.post('/customer/subscription/cancel');
-    toast.success('Subscription cancel ho gayi');
+    toast.success('Subscription cancelled successfully.');
     load();
   }
 
   function handleLogout() {
     logoutCustomer();
-    navigate('/customer');
+    navigate('/customer/login');
   }
 
   useEffect(() => { load(); }, []);
 
-  const initials = profile?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'CI';
+  const initials = profile?.name?.split(' ').map((word) => word[0]).join('').toUpperCase().slice(0, 2) || 'CI';
 
   if (loading) return <CustomerLayout><div className="flex justify-center py-20"><Spinner size="lg" /></div></CustomerLayout>;
 
@@ -82,7 +96,6 @@ export default function Profile() {
       <div className="p-4 max-w-md mx-auto space-y-4">
         <h1 className="font-playfair text-2xl text-ci-white font-bold pt-4">Profile</h1>
 
-        {/* Avatar */}
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-ci-gold flex items-center justify-center text-ci-black font-bold text-xl">
             {initials}
@@ -96,7 +109,6 @@ export default function Profile() {
           </button>
         </div>
 
-        {/* Address */}
         <Card>
           <h3 className="text-ci-gold font-medium mb-2">Delivery Address</h3>
           <p className="text-ci-white text-sm">{profile?.address_line1}</p>
@@ -107,76 +119,75 @@ export default function Profile() {
           </div>
         </Card>
 
-        {/* Subscription */}
         {sub ? (
           <Card goldLeft>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-ci-white font-semibold">Subscription</h3>
               <Badge status={sub.status}>{sub.status}</Badge>
             </div>
-            <p className="text-ci-white capitalize text-sm">{sub.plan_type} — {sub.meal_type}</p>
+            <p className="text-ci-white capitalize text-sm">{sub.plan_type} - {sub.meal_type}</p>
             <p className="text-ci-white-muted text-xs mt-0.5">
-              {formatISTDate(sub.start_date)} – {formatISTDate(sub.end_date)} · {daysLeft(sub.end_date)} din bache
+              {formatISTDate(sub.start_date)} - {formatISTDate(sub.end_date)} • {daysLeft(sub.end_date)} days left
             </p>
             {sub.status === 'active' && (
               <div className="flex gap-2 mt-3">
-                <Button variant="secondary" size="sm" onClick={() => setShowPause(true)}>Pause Karo</Button>
+                <Button variant="secondary" size="sm" onClick={() => setShowPause(true)}>Pause</Button>
                 <Button variant="danger" size="sm" onClick={handleCancel}>Cancel</Button>
               </div>
             )}
           </Card>
         ) : (
           <Card>
-            <p className="text-ci-white-muted text-sm mb-2">Koi active subscription nahi hai</p>
-            <Button size="sm" onClick={() => navigate('/customer/plans')}>Plan Lo →</Button>
+            <p className="text-ci-white-muted text-sm mb-2">No active subscription found.</p>
+            <Button size="sm" onClick={() => navigate('/customer/plans')}>Choose a Plan</Button>
           </Card>
         )}
 
-        {/* Help */}
         <Card className="cursor-pointer hover:border-ci-gold" onClick={() => navigate('/customer/support')}>
           <p className="text-ci-white font-medium">Help & Support</p>
-          <p className="text-ci-white-muted text-xs">Koi problem? Hum yahan hain.</p>
+          <p className="text-ci-white-muted text-xs">Need help? We are here for you.</p>
         </Card>
 
-        {/* Logout */}
         <button onClick={handleLogout} className="flex items-center gap-2 text-ci-error hover:opacity-80 text-sm w-full justify-center py-3">
           <LogOut size={16} /> Logout
         </button>
       </div>
 
-      {/* Edit Modal */}
-      <Modal isOpen={editing} onClose={() => setEditing(false)} title="Profile Edit Karo">
+      <Modal isOpen={editing} onClose={() => setEditing(false)} title="Edit Profile">
         <div className="space-y-3">
-          <Input label="Naam" value={editForm.name || ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+          <Input label="Name" value={editForm.name || ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
           <Input label="Address" value={editForm.address_line1 || ''} onChange={e => setEditForm({ ...editForm, address_line1: e.target.value })} />
           <div>
             <label className="block text-ci-gold text-sm font-medium mb-1.5">Area</label>
             <select value={editForm.area || ''} onChange={e => setEditForm({ ...editForm, area: e.target.value })} className="input-field">
-              {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+              {AREAS.map((area) => <option key={area} value={area}>{area}</option>)}
             </select>
           </div>
           <Input label="Pincode" value={editForm.pincode || ''} onChange={e => setEditForm({ ...editForm, pincode: e.target.value })} />
           <div>
             <label className="block text-ci-gold text-sm font-medium mb-2">Meal Preference</label>
             <div className="flex gap-2">
-              {['veg', 'nonveg', 'jain'].map(p => (
-                <button key={p} type="button" onClick={() => setEditForm({ ...editForm, meal_preference: p })}
-                  className={`flex-1 py-2 rounded-xl text-sm capitalize border transition-colors ${editForm.meal_preference === p ? 'bg-ci-gold text-ci-black border-ci-gold' : 'border-ci-black-border text-ci-white-muted'}`}>
-                  {p}
+              {['veg', 'nonveg', 'jain'].map((preference) => (
+                <button
+                  key={preference}
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, meal_preference: preference })}
+                  className={`flex-1 py-2 rounded-xl text-sm capitalize border transition-colors ${editForm.meal_preference === preference ? 'bg-ci-gold text-ci-black border-ci-gold' : 'border-ci-black-border text-ci-white-muted'}`}
+                >
+                  {preference}
                 </button>
               ))}
             </div>
           </div>
-          <Button size="lg" loading={saving} onClick={handleSave}>Save Karo</Button>
+          <Button size="lg" loading={saving} onClick={handleSave}>Save</Button>
         </div>
       </Modal>
 
-      {/* Pause Modal */}
-      <Modal isOpen={showPause} onClose={() => setShowPause(false)} title="Subscription Pause Karo">
+      <Modal isOpen={showPause} onClose={() => setShowPause(false)} title="Pause Subscription">
         <div className="space-y-3">
           <Input label="Pause Start Date" type="date" value={pauseForm.startDate} onChange={e => setPauseForm({ ...pauseForm, startDate: e.target.value })} />
           <Input label="Pause End Date" type="date" value={pauseForm.endDate} onChange={e => setPauseForm({ ...pauseForm, endDate: e.target.value })} />
-          <Button size="lg" onClick={handlePause}>Pause Karo</Button>
+          <Button size="lg" onClick={handlePause}>Pause Subscription</Button>
         </div>
       </Modal>
     </CustomerLayout>

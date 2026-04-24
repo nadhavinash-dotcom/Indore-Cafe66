@@ -9,32 +9,30 @@ import OtpInput from '../../components/shared/OtpInput';
 
 export default function PartnerLogin() {
   const navigate = useNavigate();
-  const { setPartner, setCustomer } = useAuthStore();
-  const { step, phone, loading, error, resendTimer, requestOtp, verifyOtp, resend } = useOtp();
+  const { setPartner } = useAuthStore();
+  const { step, phone, loading, error, resendTimer, requestOtp, verifyOtp, resend, resetOtpFlow } = useOtp();
   const [phoneInput, setPhoneInput] = useState('');
   const [otp, setOtp] = useState('');
 
   async function handlePhoneSubmit(e) {
     e.preventDefault();
-    if (phoneInput.length !== 10) { toast.error('10 digit phone number daalein'); return; }
+    if (phoneInput.length !== 10) { toast.error('Enter a 10-digit phone number.'); return; }
     await requestOtp(phoneInput);
+  }
+
+  function handleBack() {
+    setOtp('');
+    resetOtpFlow();
   }
 
   async function handleOtpSubmit(e) {
     e.preventDefault();
-    if (otp.length !== 6) { toast.error('6 digit OTP daalein'); return; }
-    const result = await verifyOtp(otp);
+    if (otp.length !== 6) { toast.error('Enter the 6-digit OTP.'); return; }
+    const result = await verifyOtp(otp, 'partner');
     if (result) {
-      if (result.role === 'partner') {
-        setPartner(result.user, result.token);
-        toast.success(`Namaste, ${result.user.name}!`);
-        navigate('/partner/dashboard');
-      } else {
-        // Regular customer tried to login via partner portal
-        setCustomer(result.user, result.token);
-        toast.success(`Namaste, ${result.user.name}!`);
-        navigate('/customer/dashboard');
-      }
+      setPartner(result.user, result.token);
+      toast.success(`Welcome, ${result.user.name}!`);
+      navigate('/partner/dashboard');
     }
   }
 
@@ -50,37 +48,41 @@ export default function PartnerLogin() {
         </div>
 
         {step === 'phone' ? (
-          <div className="bg-ci-black-soft border border-ci-black-border rounded-card p-6">
+          <div key="phone-step" className="bg-ci-black-soft border border-ci-black-border rounded-card p-6">
             <form onSubmit={handlePhoneSubmit} className="space-y-4">
               <div>
                 <label className="block text-ci-gold text-sm font-medium mb-1.5">Phone Number</label>
                 <div className="flex">
                   <span className="flex items-center px-3 bg-ci-black border border-r-0 border-ci-black-border rounded-l-xl text-ci-white-muted">+91</span>
-                  <input type="tel" value={phoneInput}
+                  <input
+                    type="tel"
+                    value={phoneInput}
                     onChange={e => setPhoneInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     className="flex-1 bg-ci-black border border-ci-black-border text-ci-white px-4 py-3 rounded-r-xl focus:border-ci-gold"
-                    placeholder="9800000001" maxLength={10} />
+                    placeholder="9800000001"
+                    maxLength={10}
+                  />
                 </div>
-                <p className="text-ci-white-muted text-xs mt-1">Test: 9800000001 – 9800000005</p>
+                <p className="text-ci-white-muted text-xs mt-1">Test: 9800000001 - 9800000005</p>
               </div>
               {error && <p className="text-ci-error text-sm">{error}</p>}
-              <Button type="submit" size="lg" loading={loading}>OTP Bhejo</Button>
+              <Button type="submit" size="lg" loading={loading}>Send OTP</Button>
             </form>
           </div>
         ) : (
-          <div className="bg-ci-black-soft border border-ci-black-border rounded-card p-6">
-            <button onClick={() => window.location.reload()} className="flex items-center gap-1 text-ci-white-muted text-sm mb-4 hover:text-ci-white">
+          <div key="otp-step" className="bg-ci-black-soft border border-ci-black-border rounded-card p-6">
+            <button type="button" onClick={handleBack} className="flex items-center gap-1 text-ci-white-muted text-sm mb-4 hover:text-ci-white">
               <ArrowLeft size={16} /> Back
             </button>
-            <p className="text-ci-white-muted text-sm mb-5">+91 {phone} pe OTP bheja gaya</p>
+            <p className="text-ci-white-muted text-sm mb-5">OTP sent to +91 {phone}</p>
             <form onSubmit={handleOtpSubmit} className="space-y-5">
-              <OtpInput value={otp} onChange={setOtp} />
+              <OtpInput key={phone} value={otp} onChange={setOtp} />
               {error && <p className="text-ci-error text-sm text-center">{error}</p>}
-              <Button type="submit" size="lg" loading={loading} disabled={otp.length !== 6}>Verify Karein</Button>
+              <Button type="submit" size="lg" loading={loading} disabled={otp.length !== 6}>Verify</Button>
               {resendTimer > 0 ? (
                 <p className="text-center text-ci-white-muted text-sm">Resend: <span className="text-ci-gold">{resendTimer}s</span></p>
               ) : (
-                <button type="button" onClick={resend} className="block w-full text-center text-ci-gold text-sm">Dobara Bhejo</button>
+                <button type="button" onClick={resend} className="block w-full text-center text-ci-gold text-sm">Resend OTP</button>
               )}
             </form>
           </div>

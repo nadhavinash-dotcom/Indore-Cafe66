@@ -88,7 +88,7 @@ export default function KitchenPrepList() {
           <div ref={printRef} className="space-y-8">
             {/* Print header */}
             <div className="hidden print:block text-center mb-6">
-              <h1 className="text-2xl font-bold">Cafe Indoori — Kitchen Prep List</h1>
+              <h1 className="text-2xl font-bold">Cafe Indoor — Kitchen Prep List</h1>
               <p className="text-gray-600">{formatISTDate(date)}</p>
             </div>
 
@@ -106,7 +106,7 @@ export default function KitchenPrepList() {
                   </h2>
 
                   {!list ? (
-                    <Card><p className="text-ci-white-muted">Koi orders nahi hain</p></Card>
+                    <Card><p className="text-ci-white-muted">No orders found.</p></Card>
                   ) : (
                     <>
                       {/* Summary Card */}

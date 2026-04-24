@@ -71,7 +71,7 @@ export default function OrderHistory() {
 
             {orders.length === 0 && (
               <div className="text-center py-20">
-                <p className="text-ci-white-muted">Koi orders nahi hain abhi.</p>
+                <p className="text-ci-white-muted">No orders found yet.</p>
               </div>
             )}
 

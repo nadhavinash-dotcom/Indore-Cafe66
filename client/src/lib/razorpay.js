@@ -12,7 +12,7 @@ export function loadRazorpayScript() {
 export async function openRazorpay({ orderData, customer, onSuccess, onError }) {
   const loaded = await loadRazorpayScript();
   if (!loaded) {
-    onError?.('Razorpay load nahi ho saka. Internet check karo.');
+    onError?.('Unable to load Razorpay. Please check your internet connection.');
     return;
   }
 
@@ -31,7 +31,7 @@ export async function openRazorpay({ orderData, customer, onSuccess, onError }) 
     amount: orderData.amount,
     currency: 'INR',
     order_id: orderData.razorpayOrderId,
-    name: 'Cafe Indoori',
+    name: 'Cafe Indoor',
     description: 'Meal Subscription',
     theme: { color: '#C9922A' },
     modal: { backdropclose: false },

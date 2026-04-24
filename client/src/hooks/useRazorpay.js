@@ -6,11 +6,16 @@ export default function useRazorpay() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  async function initiatePayment({ planType, mealType, couponCode, customer, onSuccess }) {
+  async function initiatePayment({ planType, mealType, couponCode, customer, subscriptionPlan, onSuccess }) {
     setLoading(true);
     setError('');
     try {
-      const orderRes = await api.post('/payment/create-order', { planType, mealType, couponCode });
+      const orderRes = await api.post('/payment/create-order', {
+        planType,
+        mealType,
+        couponCode,
+        subscriptionPlan,
+      });
       const orderData = orderRes.data;
 
       await openRazorpay({
@@ -25,10 +30,11 @@ export default function useRazorpay() {
               planType,
               mealType,
               amount: orderData.amount,
+              subscriptionPlan,
             });
             onSuccess?.(verifyRes.data);
           } catch (err) {
-            setError(err.response?.data?.message || 'Payment verify nahi ho saka.');
+            setError(err.response?.data?.message || 'Payment verification failed.');
           } finally {
             setLoading(false);
           }
@@ -39,7 +45,7 @@ export default function useRazorpay() {
         },
       });
     } catch (err) {
-      setError(err.response?.data?.message || 'Payment shuru nahi ho saka.');
+      setError(err.response?.data?.message || 'Unable to start payment.');
       setLoading(false);
     }
   }
