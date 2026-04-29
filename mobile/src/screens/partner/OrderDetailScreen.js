@@ -9,7 +9,7 @@ import StatusTimeline from '../../components/shared/StatusTimeline';
 import api from '../../lib/api';
 
 const TRANSITIONS = {
-  confirmed: { next: 'picked_up', label: '📦 Mark Picked Up' },
+  conformed: { next: 'picked_up', label: '📦 Mark Picked Up' },
   picked_up: { next: 'in_transit', label: '🚴 Mark In Transit' },
   in_transit: { next: 'delivered', label: '✅ Mark Delivered' },
 };

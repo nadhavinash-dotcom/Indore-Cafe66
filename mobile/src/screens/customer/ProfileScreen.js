@@ -12,9 +12,28 @@ export default function ProfileScreen({ navigation }) {
   const customer = useAuthStore((s) => s.customer);
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const [profile, setProfile] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [sub, setSub] = useState(null);
 
   useEffect(() => {
-    api.get('/customer/profile').then(({ data }) => setProfile(data.customer)).catch(() => {});
+    async function loadData() {
+      try {
+        const [pRes, sRes] = await Promise.all([
+          api.get('/customer/profile'),
+          api.get('/customer/subscription'),
+        ]);
+
+        setProfile(pRes.data.customer);
+        setSub(sRes.data.subscription);
+        setEditForm(pRes.data.customer);
+      } catch (err) {
+        console.log('Load error:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
   }, []);
 
   function handleLogout() {
@@ -31,6 +50,15 @@ export default function ProfileScreen({ navigation }) {
   }
 
   const data = profile || customer;
+
+  const Remainingdays = (e) => {
+    const days = "";
+
+    days = new days() - e
+
+
+    return days
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -52,21 +80,22 @@ export default function ProfileScreen({ navigation }) {
           <InfoRow label="Meal Preference" value={data?.meal_preference} />
         </Card>
 
-        {profile?.subscription && (
+        {sub ? (
           <Card style={styles.subCard}>
             <Text style={styles.cardTitle}>Active Subscription</Text>
-            <InfoRow label="Plan" value={profile.subscription.plan_name} />
-            <InfoRow label="Expires" value={formatISTDate(profile.subscription.end_date)} />
-            <InfoRow label="Meals Left" value={String(profile.subscription.meals_remaining)} />
+            <InfoRow label="Plan" value={sub.status} />
+            <InfoRow label="Expires" value={formatISTDate(sub.end_date)} />
+            <InfoRow label="Meals Left" value={String(Remainingdays(sub.end_date))} />
           </Card>
-        )}
+        ) :
+          <Button
+            title="Subscribe / Upgrade"
+            variant="secondary"
+            onPress={() => navigation.navigate('Plans')}
+            style={styles.upgradeBtn}
+          />}
 
-        <Button
-          title="Subscribe / Upgrade"
-          variant="secondary"
-          onPress={() => navigation.navigate('Plans')}
-          style={styles.upgradeBtn}
-        />
+
         <Button
           title="Logout"
           variant="danger"

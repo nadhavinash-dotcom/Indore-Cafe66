@@ -19,17 +19,17 @@ export default function DashboardScreen({ navigation }) {
   const [subscription, setSubscription] = useState(null);
   const [todayOrders, setTodayOrders] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState(null);
-  const [currentLocationName, setCurrentLocationName] = useState('');
+
   async function loadData() {
     try {
       const [subRes, ordersRes] = await Promise.all([
-        api.get('/customer/subscription/active'),
+        api.get('/customer/subscription'),
         api.get('/orders/today'),
       ]);
+      console.log(subRes.data.subscription)
       setSubscription(subRes.data.subscription);
       setTodayOrders(ordersRes.data.orders || []);
-    } catch { }
+    } catch {}
   }
 
   useEffect(() => { loadData(); }, []);
@@ -40,57 +40,8 @@ export default function DashboardScreen({ navigation }) {
     setRefreshing(false);
   }
 
-  const activeMeal = lunchTimer.isOpen ? 'lunch' : dinnerTimer.isOpen  ? 'dinner' : null;
+  const activeMeal = lunchTimer.isOpen ? 'lunch' : dinnerTimer.isOpen ? 'dinner' : null;
 
-  console.log(activeMeal)
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-
-        setCurrentLocation({
-          latitude,
-          longitude,
-        });
-
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=en&lat=${latitude}&lon=${longitude}`,
-            {
-              headers: {
-                Accept: 'application/json',
-                'Accept-Language': 'en',
-              },
-            }
-          );
-          const data = await response.json();
-          const address = data.address || {};
-          const locationLabel = [
-            address.suburb,
-            address.neighbourhood,
-            address.city || address.town || address.village,
-            address.state,
-          ].filter(Boolean)[0] || data.display_name || 'Current location';
-          setCurrentLocationName(locationLabel);
-        } catch (error) {
-          console.error('Error resolving current location name:', error);
-          setCurrentLocationName('Current location');
-        }
-      },
-      (error) => {
-        console.error('Error fetching current location:', error);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
-  }, []);
-  
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -101,11 +52,6 @@ export default function DashboardScreen({ navigation }) {
           <View>
             <Text style={styles.greeting}>Namaste, {customer?.name || 'Friend'} 🙏</Text>
             <Text style={styles.date}>{formatISTDate(new Date().toISOString())}</Text>
-            {currentLocation && (
-              <p className="text-ci-white-muted text-xs mt-2">
-                Current location: {currentLocationName || `${currentLocation.latitude.toFixed(5)}, ${currentLocation.longitude.toFixed(5)}`}
-              </p>
-            )}
           </View>
         </View>
 
@@ -137,12 +83,12 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.sectionTitle}>Active Subscription</Text>
             <View style={styles.subRow}>
               <Text style={styles.subLabel}>Plan</Text>
-              <Text style={styles.subValue}>{subscription.plan_name}</Text>
+              <Text style={styles.subValue}>{subscription.meal_type}</Text>
             </View>
-            <View style={styles.subRow}>
+            {/* <View style={styles.subRow}>
               <Text style={styles.subLabel}>Meals Left</Text>
               <Text style={[styles.subValue, { color: COLORS.gold }]}>{subscription.meals_remaining}</Text>
-            </View>
+            </View> */}
             <View style={styles.subRow}>
               <Text style={styles.subLabel}>Valid Until</Text>
               <Text style={styles.subValue}>{formatISTDate(subscription.end_date)}</Text>

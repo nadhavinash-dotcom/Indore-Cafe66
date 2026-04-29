@@ -3,7 +3,7 @@ import Badge from '../ui/Badge';
 
 const STATUS_VARIANT = {
   pending: 'warning',
-  confirmed: 'info',
+  conformed: 'info',
   picked_up: 'gold',
   in_transit: 'gold',
   delivered: 'success',
@@ -12,7 +12,7 @@ const STATUS_VARIANT = {
 
 const STATUS_LABEL = {
   pending: 'Pending',
-  confirmed: 'Confirmed',
+  conformed: 'conformed',
   picked_up: 'Picked Up',
   in_transit: 'In Transit',
   delivered: 'Delivered',

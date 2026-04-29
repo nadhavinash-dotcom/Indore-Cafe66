@@ -4,13 +4,13 @@ import { COLORS } from '../../constants/theme';
 import { formatISTTime } from '../../lib/timeUtils';
 
 const STEPS = [
-  { key: 'confirmed', label: 'Order Confirmed', tsKey: 'status_confirmed_at' },
+  { key: 'conformed', label: 'Order conformed', tsKey: 'status_confirmed_at' },
   { key: 'picked_up', label: 'Picked Up', tsKey: 'status_picked_up_at' },
   { key: 'in_transit', label: 'On the Way', tsKey: 'status_in_transit_at' },
   { key: 'delivered', label: 'Delivered', tsKey: 'status_delivered_at' },
 ];
 
-const ORDER_INDEX = { confirmed: 0, picked_up: 1, in_transit: 2, delivered: 3, cancelled: -1 };
+const ORDER_INDEX = { conformed: 0, picked_up: 1, in_transit: 2, delivered: 3, cancelled: -1 };
 
 export default function StatusTimeline({ order }) {
   const currentIndex = ORDER_INDEX[order.status] ?? -1;

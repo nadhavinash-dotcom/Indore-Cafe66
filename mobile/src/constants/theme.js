@@ -30,7 +30,7 @@ export const SIZES = {
 
 export const STATUS_COLORS = {
   pending: COLORS.whiteMuted,
-  confirmed: COLORS.gold,
+  conformed: COLORS.gold,
   picked_up: COLORS.warning,
   in_transit: COLORS.blue,
   delivered: COLORS.success,

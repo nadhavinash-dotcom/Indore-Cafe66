@@ -88,7 +88,6 @@ export default function KitchenScreen() {
                     {[
                       { label: 'Total', value: summary.total, color: COLORS.gold },
                       { label: 'Veg', value: summary.veg, color: COLORS.success },
-                      { label: 'Non-Veg', value: summary.nonveg, color: COLORS.error },
                       { label: 'Jain', value: summary.jain, color: COLORS.warning },
                     ].map((item) => (
                       <Card key={item.label} style={styles.summaryCard}>

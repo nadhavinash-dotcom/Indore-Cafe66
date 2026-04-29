@@ -9,7 +9,7 @@ const variants = {
 
 const statusVariants = {
   pending: 'default',
-  confirmed: 'gold',
+  conformed: 'gold',
   picked_up: 'warning',
   in_transit: 'blue',
   delivered: 'success',
