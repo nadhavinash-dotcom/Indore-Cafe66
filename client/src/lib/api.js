@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:3001/api',
   timeout: 15000,
 });
 
@@ -9,7 +9,7 @@ api.interceptors.request.use((config) => {
   const url = config.url || '';
   let token;
   // Route-specific token selection
-  if (url.startsWith('/admin') || url.startsWith('/auth/admin')||url.startsWith('api/partner')) {
+  if (url.startsWith('/admin') || url.startsWith('/auth/admin')) {
     token = localStorage.getItem('ci_admin_token');
   } else if (url.startsWith('/partner')) {
     token = localStorage.getItem('ci_partner_token');

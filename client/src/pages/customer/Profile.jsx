@@ -14,16 +14,22 @@ import Spinner from '../../components/ui/Spinner';
 import { formatISTDate, daysLeft } from '../../lib/timeUtils';
 
 const AREAS = [
-  "Adilabad", "Bhadradri Kothagudem", "Hanumakonda", "Hyderabad", 
-  "Jagtial", "Jangaon", "Jayashankar Bhupalpally", "Jogulamba Gadwal", 
-  "Kamareddy", "Karimnagar", "Khammam", "Kumuram Bheem Asifabad", 
-  "Mahabubabad", "Mahabubnagar", "Mancherial", "Medak", 
-  "Medchal-Malkajgiri", "Mulugu", "Nagarkurnool", "Nalgonda", 
-  "Narayanpet", "Nirmal", "Nizamabad", "Peddapalli", 
-  "Rajanna Sircilla", "Rangareddy", "Sangareddy", "Siddipet", 
+  "Adilabad", "Bhadradri Kothagudem", "Hanumakonda", "Hyderabad",
+  "Jagtial", "Jangaon", "Jayashankar Bhupalpally", "Jogulamba Gadwal",
+  "Kamareddy", "Karimnagar", "Khammam", "Kumuram Bheem Asifabad",
+  "Mahabubabad", "Mahabubnagar", "Mancherial", "Medak",
+  "Medchal-Malkajgiri", "Mulugu", "Nagarkurnool", "Nalgonda",
+  "Narayanpet", "Nirmal", "Nizamabad", "Peddapalli",
+  "Rajanna Sircilla", "Rangareddy", "Sangareddy", "Siddipet",
   "Suryapet", "Vikarabad", "Wanaparthy", "Warangal", "Yadadri Bhuvanagiri"
 ];
-
+const categories = [
+  { value: 'delivery_issue', label: 'Delivery Issue' },
+  { value: 'meal_quality', label: 'Meal Quality' },
+  { value: 'payment', label: 'Payment' },
+  { value: 'subscription', label: 'Subscription' },
+  { value: 'other', label: 'Other' },
+];
 export default function Profile() {
   const navigate = useNavigate();
   const { logoutCustomer } = useAuthStore();
@@ -35,6 +41,12 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [showPause, setShowPause] = useState(false);
   const [pauseForm, setPauseForm] = useState({ startDate: '', endDate: '' });
+  const [showSupport, setShowSupport] = useState(false);
+  const [supportMessage, setSupportMessage] = useState('');
+  const [category, setCategory] = useState('');
+  const [subject, setSubject] = useState('');
+
+  const [sendingSupport, setSendingSupport] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -78,6 +90,37 @@ export default function Profile() {
     await api.post('/customer/subscription/cancel');
     toast.success('Subscription cancelled successfully.');
     load();
+  }
+
+  async function handleSupportSubmit() {
+    const fields = [
+      { value: subject?.trim(), label: 'Subject' },
+      { value: category?.trim(), label: 'Category' },
+      { value: supportMessage?.trim(), label: 'Message' },
+    ];
+
+    const emptyField = fields.find(f => !f.value);
+
+    if (emptyField) {
+      toast.error(`${emptyField.label} is required. Please fill this.`);
+      return;
+    }
+
+    setSendingSupport(true);
+    try {
+      await api.post('/support/tickets', {
+        subject: subject,
+        category: category,
+        description: message,
+      });
+      toast.success('Support request sent successfully.');
+      setSupportMessage('');
+      setShowSupport(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to send support request.');
+    } finally {
+      setSendingSupport(false);
+    }
   }
 
   function handleLogout() {
@@ -143,7 +186,7 @@ export default function Profile() {
           </Card>
         )}
 
-        <Card className="cursor-pointer hover:border-ci-gold" onClick={() => navigate('/customer/support')}>
+        <Card className="cursor-pointer hover:border-ci-gold" onClick={() => setShowSupport(true)}>
           <p className="text-ci-white font-medium">Help & Support</p>
           <p className="text-ci-white-muted text-xs">Need help? We are here for you.</p>
         </Card>
@@ -167,7 +210,7 @@ export default function Profile() {
           <div>
             <label className="block text-ci-gold text-sm font-medium mb-2">Meal Preference</label>
             <div className="flex gap-2">
-              {['veg', 'nonveg', 'jain'].map((preference) => (
+              {['veg', 'jain'].map((preference) => (
                 <button
                   key={preference}
                   type="button"
@@ -188,6 +231,58 @@ export default function Profile() {
           <Input label="Pause Start Date" type="date" value={pauseForm.startDate} onChange={e => setPauseForm({ ...pauseForm, startDate: e.target.value })} />
           <Input label="Pause End Date" type="date" value={pauseForm.endDate} onChange={e => setPauseForm({ ...pauseForm, endDate: e.target.value })} />
           <Button size="lg" onClick={handlePause}>Pause Subscription</Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={showSupport} onClose={() => setShowSupport(false)} title="Help & Support">
+        <div className="space-y-4">
+
+          {/* Subject */}
+          <div>
+            <label className="block text-ci-gold text-sm font-medium mb-1.5">
+              Subject
+            </label>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Enter subject"
+              className="input-field"
+            />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block text-ci-gold text-sm font-medium mb-1.5">
+              Category
+            </label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="input-field">
+              <option value="">Select category</option>
+              {categories.map((cat) => (
+                <option key={cat.value} value={cat.value}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Message */}
+          <div>
+            <label className="block text-ci-gold text-sm font-medium mb-1.5">
+              Your Message
+            </label>
+            <textarea
+              value={supportMessage}
+              onChange={(e) => setSupportMessage(e.target.value)}
+              placeholder="Describe your issue here..."
+              rows={5}
+              className="input-field min-h-[140px] resize-none"
+            />
+          </div>
+
+          <Button size="lg" loading={sendingSupport} onClick={handleSupportSubmit}>
+            Send
+          </Button>
         </div>
       </Modal>
     </CustomerLayout>

@@ -126,4 +126,49 @@ router.put('/settings', verifyToken('admin'), asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
+router.put(
+  '/orders/assign-partner',
+  asyncHandler(async (req, res) => {
+    const { partnerId, order_id } = req.body;
+
+    console.log(order_id, partnerId);
+
+    // 1. Find Order
+    const order = await Order.findById(order_id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
+
+    // 2. Find Partner
+    const partner = await DeliveryPartner.findById(partnerId);
+
+    if (!partner) {
+      return res.status(404).json({
+        success: false,
+        message: 'No delivery partner found',
+      });
+    }
+
+    // 3. Update Order
+    order.partner_id = partner._id;
+    order.status = 'conformed';
+    order.status_confirmed_at =  new Date();
+
+    await order.save();
+
+    // 4. Response
+    res.status(200).json({
+      success: true,
+      message: 'Partner assigned successfully',
+      data: {
+        orderId: order._id,
+        partnerId: partner._id,
+        partnerName: partner.name,
+      },
+    });
+  })
+);
 module.exports = router;

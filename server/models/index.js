@@ -55,12 +55,39 @@ const subscriptionSchema = new mongoose.Schema({
   meal_type: { type: String, required: true },
   start_date: { type: String, required: true },
   end_date: { type: String, required: true },
+  meal_start_dates: {
+    lunch: { type: String, default: null },
+    dinner: { type: String, default: null },
+  },
   status: { type: String, default: 'active' },
   amount_paid: { type: Number, default: 0 },
   payment_id: { type: String, default: null },
   razorpay_order_id: { type: String, default: null },
   pause_start: { type: String, default: null },
   pause_end: { type: String, default: null },
+}, baseOptions({ timestamps: { createdAt: 'created_at', updatedAt: false } }));
+
+const paymentAttemptSchema = new mongoose.Schema({
+  customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true, index: true },
+  plan_type: { type: String, required: true },
+  meal_type: { type: String, required: true },
+  coupon_code: { type: String, default: null },
+  base_amount: { type: Number, required: true },
+  amount: { type: Number, required: true },
+  currency: { type: String, default: 'INR' },
+  receipt: { type: String, required: true },
+  razorpay_order_id: { type: String, required: true, unique: true, index: true },
+  razorpay_payment_id: { type: String, default: null },
+  razorpay_signature: { type: String, default: null },
+  start_date: { type: String, required: true },
+  end_date: { type: String, required: true },
+  meal_start_dates: {
+    lunch: { type: String, default: null },
+    dinner: { type: String, default: null },
+  },
+  status: { type: String, default: 'created' },
+  subscription_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Subscription', default: null },
+  verified_at: { type: Date, default: null },
 }, baseOptions({ timestamps: { createdAt: 'created_at', updatedAt: false } }));
 
 const orderSchema = new mongoose.Schema({
@@ -131,6 +158,7 @@ const AdminUser = mongoose.models.AdminUser || mongoose.model('AdminUser', admin
 const Customer = mongoose.models.Customer || mongoose.model('Customer', customerSchema, 'customers');
 const DeliveryPartner = mongoose.models.DeliveryPartner || mongoose.model('DeliveryPartner', deliveryPartnerSchema, 'delivery_partners');
 const Subscription = mongoose.models.Subscription || mongoose.model('Subscription', subscriptionSchema, 'subscriptions');
+const PaymentAttempt = mongoose.models.PaymentAttempt || mongoose.model('PaymentAttempt', paymentAttemptSchema, 'payment_attempts');
 const Order = mongoose.models.Order || mongoose.model('Order', orderSchema, 'orders');
 const KitchenPrepList = mongoose.models.KitchenPrepList || mongoose.model('KitchenPrepList', kitchenPrepListSchema, 'kitchen_prep_lists');
 const SupportTicket = mongoose.models.SupportTicket || mongoose.model('SupportTicket', supportTicketSchema, 'support_tickets');
@@ -143,6 +171,7 @@ module.exports = {
   Customer,
   DeliveryPartner,
   Subscription,
+  PaymentAttempt,
   Order,
   KitchenPrepList,
   SupportTicket,

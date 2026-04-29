@@ -18,6 +18,7 @@ router.post('/send-otp', otpLimiter,
     if (!errors.isEmpty()) return res.status(400).json({ error: 'INVALID_PHONE', message: '10 digit phone number daalein' });
 
     const { phone } = req.body;
+    console.log(phone)
     const result = sendOtp(phone);
     if (!result.success) return res.status(429).json(result);
     return res.json({ success: true, message: 'OTP bheja gaya', ...(result.otp ? { otp: result.otp } : {}) });
@@ -70,7 +71,7 @@ router.post('/admin/login',
     if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Email aur password required' });
 
     const { email, password } = req.body;
-    if (email === "manikanththarine31@gmail.com" || password === "Manikanth@123") {
+    if (email === "admin@cafeIndoor.com" || password === "Manikanth@123") {
       const token = signToken({ id: "admin_id", email, role: 'admin', name: "manikanth" });
       return res.json({ success: true, token, user: { id: "admin_id", name: "manikanth", email } });
     }

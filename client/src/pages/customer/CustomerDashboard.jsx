@@ -23,6 +23,9 @@ export default function CustomerDashboard() {
   const [profile, setProfile] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [currentLocationName, setCurrentLocationName] = useState('');
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [selectedMeal, setSelectedMeal] = useState(null);
+  const [editForm, setEditForm] = useState({});
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -92,6 +95,7 @@ export default function CustomerDashboard() {
         api.get('/customer/subscription'),
       ]);
       setTodayOrders(ordersRes.data.orders);
+      console.log(ordersRes.data.orders)
       setSubscription(subRes.data.subscription);
     } finally {
       setLoading(false);
@@ -103,6 +107,20 @@ export default function CustomerDashboard() {
     const interval = setInterval(loadData, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  const HandleSaveAddress = async () => {
+    try {
+      await api.put('/customer/profile', editForm);
+      toast.success('Profile updated successfully.');
+      setEditing(false);
+      load();
+    } catch {
+      toast.error('Unable to save changes.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
 
   const lunchOrder = todayOrders.find((order) => order.meal_type === 'lunch');
   const dinnerOrder = todayOrders.find((order) => order.meal_type === 'dinner');
@@ -207,6 +225,17 @@ export default function CustomerDashboard() {
                       <Badge status={order.status}>{order.status}</Badge>
                     </div>
                     <StatusTimeline order={order} />
+                    {order.status === "confirmed" || order.status === "picked_up" ? <Button
+                      size="sm"
+                      className="w-full text-xs py-2 mt-2"
+                      onClick={() => {
+                        setSelectedMeal(meal);
+                        setShowAddressModal(true);
+                      }}
+                    >
+                      Update Address
+                    </Button> : ""}
+
                   </>
                 ) : locked ? (
                   <p className="text-ci-error text-xs text-center">Booking closed</p>
@@ -231,6 +260,57 @@ export default function CustomerDashboard() {
           </Card>
         )}
       </div>
+      {showAddressModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
+
+          {/* Modal Card */}
+          <div className="w-full sm:w-96 bg-ci-black-soft border border-ci-black-border rounded-t-2xl sm:rounded-2xl p-4 animate-slideUp">
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-ci-white font-semibold text-sm">
+                Update Address ({selectedMeal})
+              </h2>
+              <button
+                onClick={() => setShowAddressModal(false)}
+                className="text-ci-white-muted hover:text-ci-white text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Input */}
+            <textarea
+              rows={3}
+              placeholder="Enter new delivery address..."
+              value={editForm.address_line1 || ''} onChange={e => setEditForm({ ...editForm, address_line1: e.target.value })}
+              className="w-full bg-ci-black border border-ci-black-border rounded-lg p-2 text-sm text-ci-white placeholder:text-ci-white-muted focus:outline-none focus:border-ci-gold"
+            />
+
+            {/* Actions */}
+            <div className="flex gap-2 mt-4">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-1/2"
+                onClick={() => setShowAddressModal(false)}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                size="sm"
+                className="w-1/2"
+                onClick={() => {
+                  HandleSaveAddress()
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </CustomerLayout>
   );
 }

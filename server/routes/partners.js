@@ -39,7 +39,12 @@ router.get('/orders/today', verifyToken('partner'), asyncHandler(async (req, res
 router.put('/orders/:id/status', verifyToken('partner'), asyncHandler(async (req, res) => {
   const { status } = req.body;
   const validTransitions = { confirmed: 'picked_up', picked_up: 'in_transit', in_transit: 'delivered' };
-
+  const tsFieldMap = {
+    confirmed: 'status_confirmed_at',
+    picked_up: 'status_picked_up_at',
+    in_transit: 'status_in_transit_at',
+    delivered: 'status_delivered_at'
+  };
   const order = await Order.findOne({ _id: req.params.id, partner_id: req.user.id });
   if (!order) return res.status(404).json({ error: 'NOT_FOUND' });
 
@@ -49,11 +54,15 @@ router.put('/orders/:id/status', verifyToken('partner'), asyncHandler(async (req
   }
 
   order.status = status;
-  const tsField = { picked_up: 'status_picked_up_at', in_transit: 'status_in_transit_at', delivered: 'status_delivered_at' }[status];
-  if (tsField) order[tsField] = new Date();
+  const tsField = tsFieldMap[status];
+  if (tsField && !order[tsField]) {
+    order[tsField] = new Date();
+  }
+
+
   await order.save();
 
-  onOrderStatusChange(order, status).catch(() => {});
+  onOrderStatusChange(order, status).catch(() => { });
 
   res.json({ success: true, status });
 }));
@@ -144,7 +153,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
   if (isOnDuty !== undefined) update.is_on_duty = isOnDuty;
   if (vehicleType !== undefined) update.vehicle_type = vehicleType;
   if (areas !== undefined) update.area_coverage = Array.isArray(areas) ? areas : [];
-console.log(update);
+  console.log(update);
   if (!Object.keys(update).length) return res.status(400).json({ error: 'NO_FIELDS' });
 
   await DeliveryPartner.updateOne({ _id: req.params.id }, { $set: update });

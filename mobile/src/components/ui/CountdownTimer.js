@@ -11,7 +11,7 @@ function DigitBox({ value, color }) {
   );
 }
 
-export default function CountdownTimer({ meal = 'lunch' }) {
+export default function CountdownTimer({ meal }) {
   const { secondsRemaining, isOpen } = useTimerStore((s) => s[meal]);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 

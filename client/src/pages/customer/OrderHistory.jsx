@@ -6,14 +6,23 @@ import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
 import Modal from '../../components/ui/Modal';
 import StatusTimeline from '../../components/shared/StatusTimeline';
+import toast from 'react-hot-toast';
 import { formatISTDate } from '../../lib/timeUtils';
-
+const categories = [
+  { value: 'delivery_issue', label: 'Delivery Issue' },
+  { value: 'meal_quality', label: 'Meal Quality' },
+  { value: 'other', label: 'Other' },
+];
 export default function OrderHistory() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [showSupport, setShowSupport] = useState(false);
+  const [category, setCategory] = useState('');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [sendingSupport, setSendingSupport] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -39,6 +48,45 @@ export default function OrderHistory() {
     return acc;
   }, {});
 
+  async function handleSupportSubmit() {
+    const message = supportMessage?.trim();
+    console.log( "subject", `Order #${selected?.id}`,
+        "category", category,
+        "description", message,
+        "orderId", selected?.id, )
+        
+    const fields = [
+      { value: category, label: 'Category' },
+      { value: message, label: 'Message' },
+    ];
+
+    const emptyField = fields.find(f => !f.value);
+
+    if (emptyField) {
+      toast.error(`${emptyField.label} is required. Please fill this.`);
+      return;
+    }
+
+    setSendingSupport(true);
+    try {
+      await api.post('/support/tickets', {
+        subject: `Order #${selected?.id}`,
+        category: category,
+        description: message,
+        orderId: selected?.id, // 🔥 useful for backend
+      });
+
+      toast.success('Support request sent successfully.');
+
+      setSupportMessage('');
+      setCategory('');
+      setShowSupport(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to send support request.');
+    } finally {
+      setSendingSupport(false);
+    }
+  }
   return (
     <CustomerLayout>
       <div className="p-4 max-w-md mx-auto">
@@ -105,9 +153,69 @@ export default function OrderHistory() {
                 <span className="text-ci-white">{selected.partner_name}</span>
               </div>
             )}
+
             <StatusTimeline order={selected} />
+            {selected?.status === "delivered" ? <button
+              onClick={() => setShowSupport(true)}
+              className="w-full bg-ci-gold text-black text-sm py-2 rounded-lg mt-2"
+            >
+              Review
+            </button>
+              : ""}
+
           </div>
         )}
+      </Modal>
+      <Modal
+        isOpen={showSupport}
+        onClose={() => setShowSupport(false)}
+        title="Contact Support"
+      >
+        <div className="space-y-4">
+
+          {/* Category */}
+          <div>
+            <label className="block text-ci-gold text-sm font-medium mb-1.5">
+              Category
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="input-field"
+            >
+              <option value="">Select category</option>
+              {categories.map((cat) => (
+                <option key={cat.value} value={cat.value}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Message */}
+          <div>
+            <label className="block text-ci-gold text-sm font-medium mb-1.5">
+              Your Message
+            </label>
+            <textarea
+              value={supportMessage}
+              onChange={(e) => setSupportMessage(e.target.value)}
+              placeholder="Describe your issue here..."
+              rows={5}
+              className="input-field min-h-[140px] resize-none"
+            />
+          </div>
+
+          {/* Submit */}
+          <button
+            onClick={handleSupportSubmit}
+            disabled={sendingSupport}
+            className="w-full bg-ci-gold text-black py-2 rounded-lg disabled:opacity-50"
+          >
+            {sendingSupport ? 'Sending...' : 'Send'}
+          </button>
+
+        </div>
       </Modal>
     </CustomerLayout>
   );

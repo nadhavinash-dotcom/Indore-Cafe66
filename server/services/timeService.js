@@ -2,7 +2,27 @@
 // so new Date() already returns IST-correct values.
 
 const { CUTOFF_HOURS } = require('../config/constants');
+const { Setting } = require('../models');
 
+
+async function loadCutoffHours() {
+  const [lunchSetting, dinnerSetting] = await Promise.all([
+    Setting.findOne({ key: "lunch_cutoff" }),
+    Setting.findOne({ key: "dinner_cutoff" }),
+  ]);
+
+  if (lunchSetting?.value) {
+    const [hour, minute] = lunchSetting.value.split(":").map(Number);
+    CUTOFF_HOURS.lunch.hour = hour;
+    CUTOFF_HOURS.lunch.minute = minute;
+  }
+
+  if (dinnerSetting?.value) {
+    const [hour, minute] = dinnerSetting.value.split(":").map(Number);
+    CUTOFF_HOURS.dinner.hour = hour;
+    CUTOFF_HOURS.dinner.minute = minute;
+  }
+}
 function getISTNow() {
   return new Date();
 }
@@ -94,13 +114,13 @@ function getMealAvailability() {
   return {
     lunch: {
       available: !lunchPassed,
-      cutoffTime: `${String(CUTOFF_HOURS.lunch.hour).padStart(2,'0')}:${String(CUTOFF_HOURS.lunch.minute).padStart(2,'0')}`,
-      lockedAt: lunchPassed ? `${String(CUTOFF_HOURS.lunch.hour).padStart(2,'0')}:${String(CUTOFF_HOURS.lunch.minute).padStart(2,'0')}` : null,
+      cutoffTime: `${String(CUTOFF_HOURS.lunch.hour).padStart(2, '0')}:${String(CUTOFF_HOURS.lunch.minute).padStart(2, '0')}`,
+      lockedAt: lunchPassed ? `${String(CUTOFF_HOURS.lunch.hour).padStart(2, '0')}:${String(CUTOFF_HOURS.lunch.minute).padStart(2, '0')}` : null,
     },
     dinner: {
       available: !dinnerPassed,
-      cutoffTime: `${String(CUTOFF_HOURS.dinner.hour).padStart(2,'0')}:${String(CUTOFF_HOURS.dinner.minute).padStart(2,'0')}`,
-      lockedAt: dinnerPassed ? `${String(CUTOFF_HOURS.dinner.hour).padStart(2,'0')}:${String(CUTOFF_HOURS.dinner.minute).padStart(2,'0')}` : null,
+      cutoffTime: `${String(CUTOFF_HOURS.dinner.hour).padStart(2, '0')}:${String(CUTOFF_HOURS.dinner.minute).padStart(2, '0')}`,
+      lockedAt: dinnerPassed ? `${String(CUTOFF_HOURS.dinner.hour).padStart(2, '0')}:${String(CUTOFF_HOURS.dinner.minute).padStart(2, '0')}` : null,
     },
     serverTime: now.toISOString(),
     istTimeDisplay: getISTTimeString(),
@@ -116,6 +136,7 @@ function addDays(dateStr, days) {
 }
 
 module.exports = {
+  loadCutoffHours,
   getISTNow,
   getISTDateString,
   getTomorrowISTDateString,

@@ -80,4 +80,5 @@ router.get('/all', verifyToken('admin'), asyncHandler(async (req, res) => {
   res.json({ subscriptions: serializedSubscriptions, total });
 }));
 
+
 module.exports = router;

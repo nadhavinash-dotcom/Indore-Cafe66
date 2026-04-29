@@ -53,7 +53,7 @@ export default function KitchenPrepList() {
   function handlePrint() { window.print(); }
 
   const mealsToShow = meal === 'both' ? ['lunch', 'dinner'] : [meal];
-
+console.log(data)
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -120,8 +120,8 @@ export default function KitchenPrepList() {
                             <p className="text-ci-white-muted text-xs">Updated: {new Date(list.generated_at).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}</p>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-                          {[['Veg', summary.veg, 'text-ci-success'], ['Non-Veg', summary.nonveg, 'text-ci-error'], ['Jain', summary.jain, 'text-ci-gold'], ['Special', summary.special, 'text-ci-white-muted']].map(([label, count, color]) => (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+                          {[['Veg', summary.veg, 'text-ci-success'], ['Jain', summary.jain, 'text-ci-gold'], ['Special', summary.special, 'text-ci-white-muted']].map(([label, count, color]) => (
                             <div key={label} className="bg-ci-black rounded-xl p-3 text-center">
                               <p className={`text-2xl font-bold ${color}`}>{count || 0}</p>
                               <p className="text-ci-white-muted text-xs">{label}</p>
@@ -138,7 +138,7 @@ export default function KitchenPrepList() {
                             <table className="w-full text-sm">
                               <thead>
                                 <tr className="border-b border-ci-black-border">
-                                  {['Area', 'Veg', 'Non-Veg', 'Jain', 'Special', 'Total'].map(h => (
+                                  {['Area', 'Veg', 'Jain', 'Special', 'Total'].map(h => (
                                     <th key={h} className="text-ci-white-muted text-left py-2 pr-4">{h}</th>
                                   ))}
                                 </tr>
@@ -148,7 +148,6 @@ export default function KitchenPrepList() {
                                   <tr key={area} className="border-b border-ci-black-border/50">
                                     <td className="py-2 pr-4 text-ci-white font-medium">{area}</td>
                                     <td className="py-2 pr-4 text-ci-success">{counts.veg || 0}</td>
-                                    <td className="py-2 pr-4 text-ci-error">{counts.nonveg || 0}</td>
                                     <td className="py-2 pr-4 text-ci-gold">{counts.jain || 0}</td>
                                     <td className="py-2 pr-4 text-ci-white-muted">{counts.special || 0}</td>
                                     <td className="py-2 pr-4 text-ci-white font-bold">{counts.total || 0}</td>
@@ -168,7 +167,7 @@ export default function KitchenPrepList() {
                             <table className="w-full text-sm">
                               <thead>
                                 <tr className="border-b border-ci-black-border">
-                                  {['Sr', 'Customer', 'Area', 'Address', 'Preference', 'Notes', 'Partner', 'Status'].map(h => (
+                                  {['Sr', 'Customer', 'Area', 'Address', 'Preference', 'Notes', 'Status'].map(h => (
                                     <th key={h} className="text-ci-white-muted text-left py-2 pr-3">{h}</th>
                                   ))}
                                 </tr>
@@ -181,12 +180,12 @@ export default function KitchenPrepList() {
                                     <td className="py-2 pr-3 text-ci-gold text-xs">{order.area}</td>
                                     <td className="py-2 pr-3 text-ci-white-muted text-xs max-w-[150px] truncate">{order.address}</td>
                                     <td className="py-2 pr-3">
-                                      <span className={`text-xs font-medium ${order.mealPreference === 'veg' ? 'text-ci-success' : order.mealPreference === 'nonveg' ? 'text-ci-error' : 'text-ci-gold'}`}>
+                                      <span className={`text-xs font-medium ${order.mealPreference === 'veg' ?  'text-ci-error' : 'text-ci-gold'}`}>
                                         {order.mealPreference}
                                       </span>
                                     </td>
                                     <td className="py-2 pr-3 text-ci-white-muted text-xs max-w-[100px] truncate">{order.notes || '—'}</td>
-                                    <td className="py-2 pr-3 text-ci-white-muted text-xs">{order.partnerName || '—'}</td>
+                                    {/* <td className="py-2 pr-3 text-ci-white-muted text-xs">{order.partnerName || '—'}</td> */}
                                     <td className="py-2 pr-3"><Badge status={order.status}>{order.status}</Badge></td>
                                   </tr>
                                 ))}

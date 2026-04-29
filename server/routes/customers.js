@@ -34,7 +34,7 @@ router.put('/profile', verifyToken('customer'),
   })
 );
 
-router.get('/', verifyToken('admin'), asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { search, area, plan_type, page = 1, limit = 50 } = req.query;
   const pageNumber = Number(page);
   const limitNumber = Number(limit);
@@ -84,7 +84,7 @@ router.get('/', verifyToken('admin'), asyncHandler(async (req, res) => {
   res.json({ customers: serializedCustomers, total: plan_type ? serializedCustomers.length : total });
 }));
 
-router.get('/:id', verifyToken('admin'), asyncHandler(async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const [customer, subscriptions, orders, tickets] = await Promise.all([
     Customer.findById(req.params.id),
     Subscription.find({ customer_id: req.params.id }).sort({ created_at: -1 }),

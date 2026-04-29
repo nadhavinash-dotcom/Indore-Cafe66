@@ -45,7 +45,7 @@ export default function Settings() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6 max-w-2xl">
+      <div className="space-y-6">
         <h1 className="font-playfair text-2xl text-ci-white font-bold">Settings</h1>
 
         <Card>
@@ -68,8 +68,8 @@ export default function Settings() {
               { key: 'trial_single_price', label: 'Trial (Single Meal)' },
             ].map(({ key, label }) => (
               <Input key={key} label={label} type="number"
-                value={form[key] ? Math.floor(parseInt(form[key]) / 100) : ''}
-                onChange={e => setForm({ ...form, [key]: String(parseInt(e.target.value || 0) * 100) })} />
+                value={form[key]}
+                onChange={e => setForm({ ...form, [key]: Number(e.target.value) })} />
             ))}
           </div>
           <Button className="mt-4" size="sm" loading={saving} onClick={() => handleSave(['monthly_both_price', 'monthly_single_price', 'trial_both_price', 'trial_single_price'])}>Save Prices</Button>
@@ -87,7 +87,7 @@ export default function Settings() {
           <Button className="mt-3" size="sm" loading={saving} onClick={() => handleSave(['coupons'])}>Save Coupons</Button>
         </Card>
 
-        <Card>
+        {/* <Card>
           <h2 className="text-ci-white font-semibold mb-4">Closed Dates (JSON Array)</h2>
           <textarea
             value={form.closed_dates || '[]'}
@@ -97,7 +97,7 @@ export default function Settings() {
             placeholder='["2026-08-15", "2026-10-02"]'
           />
           <Button className="mt-3" size="sm" loading={saving} onClick={() => handleSave(['closed_dates'])}>Save Closed Dates</Button>
-        </Card>
+        </Card> */}
       </div>
     </AdminLayout>
   );

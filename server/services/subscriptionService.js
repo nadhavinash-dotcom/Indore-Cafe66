@@ -5,6 +5,7 @@ async function generateDailyOrders() {
   const tomorrow = getTomorrowISTDateString();
   const activeSubscriptions = await Subscription.find({
     status: 'active',
+    start_date: { $lte: tomorrow },
     end_date: { $gte: tomorrow },
   });
 
@@ -18,6 +19,11 @@ async function generateDailyOrders() {
     const mealsToCreate = sub.meal_type === 'both' ? ['lunch', 'dinner'] : [sub.meal_type];
 
     for (const mealType of mealsToCreate) {
+      const mealStartDate = sub.meal_start_dates?.[mealType] || sub.start_date;
+      if (mealStartDate && tomorrow < mealStartDate) {
+        continue;
+      }
+
       const exists = await Order.findOne({
         customer_id: sub.customer_id,
         meal_type: mealType,
@@ -30,7 +36,7 @@ async function generateDailyOrders() {
           customer_id: sub.customer_id,
           meal_type: mealType,
           delivery_date: tomorrow,
-          status: 'pending',
+          status: 'Pending',
         });
         created++;
       }

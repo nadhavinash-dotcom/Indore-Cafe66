@@ -121,17 +121,17 @@ async function onOrderStatusChange(order, newStatus) {
     if (!customer) return;
 
     const notif = {
-      confirmed: NOTIFICATIONS.orderConfirmed(customer.name),
-      picked_up: NOTIFICATIONS.orderPickedUp(customer.name),
-      in_transit: NOTIFICATIONS.orderInTransit(customer.name),
-      delivered: NOTIFICATIONS.orderDelivered(customer.name),
+      Confirmed: NOTIFICATIONS.orderConfirmed(customer.name),
+      Picked_up: NOTIFICATIONS.orderPickedUp(customer.name),
+      In_transit: NOTIFICATIONS.orderInTransit(customer.name),
+      Delivered: NOTIFICATIONS.orderDelivered(customer.name),
     }[newStatus];
 
     if (notif) {
       await notifyCustomer(customer.id, { ...notif, data: { orderId: String(order._id || order.id), screen: 'OrderDetail' } });
     }
 
-    if (newStatus === 'confirmed' && order.partner_id) {
+    if (newStatus === 'Confirmed' && order.partner_id) {
       const partnerOrder = await Order.findById(order._id || order.id).populate('customer_id', 'area');
       if (partnerOrder) {
         await notifyPartner(order.partner_id, {
@@ -160,7 +160,7 @@ async function sendCutoffReminder(mealType) {
         customer_id: subscription.customer_id._id,
         meal_type: mealType,
         delivery_date: today,
-        status: { $ne: 'cancelled' },
+        status: { $ne: 'Cancelled' },
       });
 
       if (!hasOrder) customers.push(subscription.customer_id);

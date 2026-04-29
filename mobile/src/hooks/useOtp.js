@@ -26,7 +26,7 @@ export default function useOtp() {
     setError('');
     setLoading(true);
     try {
-      await api.post('/auth/otp/send', { phone: phoneNumber });
+      await api.post('/auth/send-otp', { phone: phoneNumber });
       setPhone(phoneNumber);
       setStep('otp');
       startCooldown();
@@ -42,11 +42,11 @@ export default function useOtp() {
     await sendOtp(phone);
   }
 
-  async function verifyOtp(otp, role = 'customer') {
+  async function verifyOtp(otp, role) {
     setError('');
     setLoading(true);
     try {
-      const endpoint = role === 'partner' ? '/auth/partner/verify-otp' : '/auth/otp/verify';
+      const endpoint = role === 'partner' ? '/auth/verify-otp' :'/auth/verify-otp';
       const { data } = await api.post(endpoint, { phone, otp });
       return { success: true, data };
     } catch (err) {

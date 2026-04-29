@@ -12,6 +12,7 @@ import {
   getServerTime,
   getSubscriptionTiming,
 } from '../../lib/timeUtils';
+import api from '../../lib/api';
 
 const PLAN_OPTIONS = [
   { value: 'trial', label: '7 Days', days: 7 },
@@ -24,10 +25,10 @@ const MEAL_OPTIONS = [
   { value: 'both', label: 'Both (Lunch & Dinner)' },
 ];
 
-const PRICES = {
-  trial: { lunch: 840, dinner: 840, both: 1400 },
-  monthly: { lunch: 2880, dinner: 2880, both: 4800 },
-};
+ const PRICES = {
+    trial: { lunch: 855, dinner: 855, both: 1710 },
+    monthly: { lunch: 4855, dinner: 4855, both: 9710 },
+  };
 
 export default function PlanSelection() {
   const navigate = useNavigate();
@@ -50,10 +51,38 @@ export default function PlanSelection() {
     return () => { mounted = false; };
   }, []);
 
+
+ 
+  const PriceFetch = async () => {
+    const res = await api.get('/admin/settings');
+    const s = res.data.settings;
+
+    const monthlySingle = Number(s.monthly_single_price);
+    const monthlyBoth = Number(s.monthly_both_price);
+    const trialSingle = Number(s.trial_single_price);
+    const trialBoth = Number(s.trial_both_price);
+
+    // Set values
+    PRICES.monthly.lunch = monthlySingle;
+    PRICES.monthly.dinner = monthlySingle;
+    PRICES.monthly.both = monthlyBoth;
+
+    PRICES.trial.lunch = trialSingle;
+    PRICES.trial.dinner = trialSingle;
+    PRICES.trial.both = trialBoth;
+
+    console.log(PRICES);
+  };
+
   const timing = useMemo(
     () => getSubscriptionTiming(mealType, serverNow || new Date()),
     [mealType, serverNow]
   );
+
+ useEffect(() => {
+    PriceFetch()
+  },);
+
 
   useEffect(() => {
     setSelectedStartDate(timing.firstServiceDate);
@@ -65,9 +94,9 @@ export default function PlanSelection() {
   const mealStartDates = isUsingRecommendedDate
     ? timing.mealStartDates
     : {
-        lunch: mealType === 'dinner' ? null : selectedStartDate,
-        dinner: mealType === 'lunch' ? null : selectedStartDate,
-      };
+      lunch: mealType === 'dinner' ? null : selectedStartDate,
+      dinner: mealType === 'lunch' ? null : selectedStartDate,
+    };
   const subscriptionEndDate = addDaysToISTDate(selectedStartDate, durationDays - 1);
 
   function proceed() {

@@ -12,7 +12,7 @@ async function generateKitchenListForDate(dateStr, mealType, isManual = false) {
     .populate('partner_id', 'name')
     .sort({ created_at: 1 });
 
-  const summary = { veg: 0, nonveg: 0, jain: 0, special: 0, total: orders.length };
+  const summary = { veg: 0, jain: 0, special: 0, total: orders.length };
   const byArea = {};
   const orderList = [];
 

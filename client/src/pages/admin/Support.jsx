@@ -23,7 +23,9 @@ export default function Support() {
     setLoading(true);
     try {
       const params = statusFilter ? `?status=${statusFilter}` : '';
-      const res = await api.get(`/support/admin/tickets${params}`);
+      const res = await api.get(`/support/admin/tickets${params}`); 
+            console.log(params,res)
+     
       setTickets(res.data.tickets);
     } finally {
       setLoading(false);

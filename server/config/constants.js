@@ -26,7 +26,7 @@ const DELIVERY_AREAS = [
   "Suryapet", "Vikarabad", "Wanaparthy", "Warangal", "Yadadri Bhuvanagiri"
 ];
 
-const MEAL_PREFERENCES = ['veg', 'nonveg', 'jain', 'special'];
+const MEAL_PREFERENCES = ['veg','jain', 'special'];
 
 const ORDER_STATUSES = ['Pending', 'Confirmed', 'Picked_up', 'In_transit', 'Delivered', 'Cancelled'];
 

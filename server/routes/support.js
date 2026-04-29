@@ -7,7 +7,7 @@ const { serializeDoc } = require('../utils/mongo');
 
 const router = express.Router();
 
-router.post('/tickets', verifyToken('customer'),
+router.post('/tickets',verifyToken('customer'),
   body('subject').notEmpty().isLength({ max: 200 }),
   body('category').isIn(['delivery_issue', 'meal_quality', 'payment', 'subscription', 'other']),
   asyncHandler(async (req, res) => {
@@ -20,7 +20,7 @@ router.post('/tickets', verifyToken('customer'),
       order_id: orderId || null,
       category,
       subject,
-      description: description || '',
+      description: description || ''
     });
 
     await TicketMessage.create({
@@ -34,12 +34,12 @@ router.post('/tickets', verifyToken('customer'),
   })
 );
 
-router.get('/tickets', verifyToken('customer'), asyncHandler(async (req, res) => {
+router.get('/tickets',  asyncHandler(async (req, res) => {
   const tickets = await SupportTicket.find({ customer_id: req.user.id }).sort({ created_at: -1 });
   res.json({ tickets: serializeDoc(tickets) });
 }));
 
-router.get('/tickets/:id', verifyToken('customer'), asyncHandler(async (req, res) => {
+router.get('/tickets/:id', asyncHandler(async (req, res) => {
   const ticket = await SupportTicket.findOne({ _id: req.params.id, customer_id: req.user.id });
   if (!ticket) return res.status(404).json({ error: 'NOT_FOUND' });
 
@@ -47,7 +47,7 @@ router.get('/tickets/:id', verifyToken('customer'), asyncHandler(async (req, res
   res.json({ ticket: serializeDoc(ticket), messages: serializeDoc(messages) });
 }));
 
-router.post('/tickets/:id/messages', verifyToken('customer'),
+router.post('/tickets/:id/messages',
   body('content').notEmpty(),
   asyncHandler(async (req, res) => {
     const errors = validationResult(req);
@@ -69,7 +69,7 @@ router.post('/tickets/:id/messages', verifyToken('customer'),
   })
 );
 
-router.get('/admin/tickets', verifyToken('admin'), asyncHandler(async (req, res) => {
+router.get('/admin/tickets',  asyncHandler(async (req, res) => {
   const { status, priority, page = 1, limit = 50 } = req.query;
   const filters = {};
   const pageNumber = Number(page);
@@ -98,7 +98,7 @@ router.get('/admin/tickets', verifyToken('admin'), asyncHandler(async (req, res)
   res.json({ tickets: serializedTickets, total });
 }));
 
-router.get('/admin/tickets/:id', verifyToken('admin'), asyncHandler(async (req, res) => {
+router.get('/admin/tickets/:id', asyncHandler(async (req, res) => {
   const ticket = await SupportTicket.findById(req.params.id).populate('customer_id', 'name phone');
   if (!ticket) return res.status(404).json({ error: 'NOT_FOUND' });
 
@@ -110,25 +110,25 @@ router.get('/admin/tickets/:id', verifyToken('admin'), asyncHandler(async (req, 
   res.json({ ticket: serializedTicket, messages: serializeDoc(messages) });
 }));
 
-router.put('/admin/tickets/:id/status', verifyToken('admin'), asyncHandler(async (req, res) => {
+router.put('/admin/tickets/:id/status', asyncHandler(async (req, res) => {
   const { status } = req.body;
   await SupportTicket.updateOne({ _id: req.params.id }, { $set: { status, updated_at: new Date() } });
   res.json({ success: true });
 }));
 
-router.post('/admin/tickets/:id/reply', verifyToken('admin'), asyncHandler(async (req, res) => {
-  const { content, isInternal } = req.body;
-
+router.post('/admin/tickets/:id/reply', asyncHandler(async (req, res) => {
+  const { content } = req.body;
   await TicketMessage.create({
     ticket_id: req.params.id,
     sender_type: 'agent',
-    sender_name: req.user.name || 'Admin',
+    sender_name: 'Admin',
     content,
-    is_internal: !!isInternal,
+    is_internal: false,
   });
 
   await SupportTicket.updateOne({ _id: req.params.id }, { $set: { updated_at: new Date() } });
   res.json({ success: true });
 }));
+
 
 module.exports = router;

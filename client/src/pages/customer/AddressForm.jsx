@@ -71,7 +71,7 @@ export default function AddressForm() {
           <div>
             <label className="block text-ci-gold text-sm font-medium mb-2">Meal Preference</label>
             <div className="flex gap-3">
-              {[['veg', 'Veg'], ['nonveg', 'Non-Veg'], ['jain', 'Jain']].map(([value, label]) => (
+              {[['veg', 'Veg'], ['jain', 'Jain']].map(([value, label]) => (
                 <button
                   key={value}
                   type="button"

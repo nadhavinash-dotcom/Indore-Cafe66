@@ -2,11 +2,12 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3001';
+const BASE_URL ='https://snowsuit-spooky-landowner.ngrok-free.dev';
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api`,
   timeout: 15000,
+  withCredentials: true
 });
 
 api.interceptors.request.use(async (config) => {

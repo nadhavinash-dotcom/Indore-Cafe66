@@ -52,7 +52,7 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between">
           <h1 className="font-playfair text-2xl text-ci-white font-bold">Dashboard</h1>
           <button onClick={load} className="text-ci-gold hover:text-ci-gold-light">
-            <RefreshCw size={18} />
+            {/* <RefreshCw size={18} /> */}
           </button>
         </div>
 

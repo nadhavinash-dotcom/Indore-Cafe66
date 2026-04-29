@@ -1,6 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { getMealAvailability, isCutoffPassed, getISTDateString } = require('../services/timeService');
+const { loadCutoffHours, getMealAvailability, isCutoffPassed, getISTDateString } = require('../services/timeService');
 const { verifyToken } = require('../middleware/auth');
 const { Order, Subscription, DeliveryPartner } = require('../models');
 const { asyncHandler } = require('../utils/asyncHandler');
@@ -9,7 +9,9 @@ const { serializeDoc } = require('../utils/mongo');
 const router = express.Router();
 
 router.get('/availability', (req, res) => {
+  const availability2 = loadCutoffHours();
   const availability = getMealAvailability();
+  console.log(availability2)
   res.json(availability);
 });
 
@@ -30,11 +32,11 @@ router.post('/book', verifyToken('customer'),
     const userArea = profile?.area || profile?.address_line1;
 
     // Find one partner who covers this area, is on duty, and is active
-    const assignedPartner = await DeliveryPartner.findOne({
-      area_coverage: { $in: [new RegExp(`^${userArea.trim()}$`, 'i')] },
-      is_on_duty: true,
-      status: 'active',      
-    });
+    // const assignedPartner = await DeliveryPartner.findOne({
+    //   area_coverage: { $in: [new RegExp(`^${userArea.trim()}$`, 'i')] },
+    //   is_on_duty: true,
+    //   status: 'active',      
+    // });
 
 
     if (targetDate === today && isCutoffPassed(mealType)) {
@@ -47,6 +49,7 @@ router.post('/book', verifyToken('customer'),
     const sub = await Subscription.findOne({
       customer_id: customerId,
       status: 'active',
+      start_date: { $lte: targetDate },
       end_date: { $gte: targetDate },
     }).sort({ created_at: -1 });
 
@@ -56,6 +59,14 @@ router.post('/book', verifyToken('customer'),
 
     if (sub.meal_type !== 'both' && sub.meal_type !== mealType) {
       return res.status(400).json({ error: 'MEAL_NOT_IN_PLAN', message: `Meal type ${mealType} is not included in your subscription.` });
+    }
+
+    const mealStartDate = sub.meal_start_dates?.[mealType] || sub.start_date;
+    if (mealStartDate && targetDate < mealStartDate) {
+      return res.status(400).json({
+        error: 'MEAL_NOT_STARTED',
+        message: `${mealType === 'lunch' ? 'Lunch' : 'Dinner'} service starts on ${mealStartDate}.`,
+      });
     }
 
     if (sub.pause_start && sub.pause_end && targetDate >= sub.pause_start && targetDate <= sub.pause_end) {
@@ -72,10 +83,8 @@ router.post('/book', verifyToken('customer'),
       customer_id: customerId,
       meal_type: mealType,
       delivery_date: targetDate,
-      status: 'confirmed',
+      status: 'Confirmed',
       special_note: specialNote || null,
-      partner_id: assignedPartner ? assignedPartner._id : null, // Assign if found
-
     });
 
     res.json({ success: true, order: serializeDoc(order) });
