@@ -40,9 +40,17 @@ export function tomorrowIST() {
 
 export function daysLeft(endDate) {
   if (!endDate) return 0;
-  const end = new Date(endDate + 'T23:59:59');
+
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999); // ✅ force end of day
+
   const now = new Date();
-  return Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
+
+  const diff = end - now;
+
+  if (diff <= 0) return 0;
+
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
 function getISTParts(date) {
