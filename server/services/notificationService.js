@@ -91,27 +91,27 @@ async function notifyPartner(partnerId, { title, body, data = {} }) {
 const NOTIFICATIONS = {
   orderConfirmed: (customerName) => ({
     title: 'Order Confirmed',
-    body: `${customerName}, aapka tiffin confirm ho gaya. Delivery time pe hogi.`,
+    body: `${customerName}, your tiffin has been confirmed. Delivery will be on time.`,
   }),
   orderPickedUp: (customerName) => ({
-    title: 'Tiffin Utha Liya',
-    body: `${customerName}, delivery partner ne aapka tiffin pick up kar liya.`,
+    title: 'Tiffin Picked Up',
+    body: `${customerName}, your tiffin has been picked up by the delivery partner.`,
   }),
   orderInTransit: (customerName) => ({
-    title: 'Tiffin Aa Raha Hai',
-    body: `${customerName}, aapka tiffin raaste mein hai. Thodi der mein pahunch jayega.`,
+    title: 'Tiffin On The Way',
+    body: `${customerName}, your tiffin is on the way. It will arrive shortly.`,
   }),
   orderDelivered: (customerName) => ({
-    title: 'Tiffin Deliver Ho Gaya',
-    body: `${customerName}, aapka tiffin deliver ho gaya. Khao aur maza karo!`,
+    title: 'Tiffin Delivered',
+    body: `${customerName}, your tiffin has been delivered. Enjoy your meal!`,
   }),
   newOrderAssigned: (partnerName, area) => ({
-    title: 'Naya Order Mila',
-    body: `${partnerName}, ${area} area mein naya delivery order assign hua hai.`,
+    title: 'New Order Assigned',
+    body: `${partnerName}, a new delivery order has been assigned in the ${area} area.`,
   }),
   cutoffReminder: (mealType, minutesLeft) => ({
-    title: `${mealType === 'lunch' ? 'Lunch' : 'Dinner'} Booking Band Hone Wali Hai`,
-    body: `Sirf ${minutesLeft} minute bache hain! Jaldi order karo.`,
+    title: `${mealType === 'lunch' ? 'Lunch' : 'Dinner'} Booking Closing Soon`,
+    body: `Only ${minutesLeft} minutes left! Place your order now.`,
   }),
 };
 

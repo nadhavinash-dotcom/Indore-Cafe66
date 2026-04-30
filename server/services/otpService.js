@@ -21,6 +21,8 @@ setInterval(() => {
 function generateOtp() {
   if (process.env.NODE_ENV === 'development') return '123456';
   return String(Math.floor(100000 + Math.random() * 900000));
+
+  
 }
 
 function canSendOtp(phone) {
@@ -33,7 +35,7 @@ function canSendOtp(phone) {
 
 function sendOtp(phone) {
   if (!canSendOtp(phone)) {
-    return { success: false, error: 'TOO_MANY_REQUESTS', message: 'Bahut zyada OTP requests. 10 minute baad try karo.' };
+    return { success: false, error: 'TOO_MANY_REQUESTS', message: 'Too many OTP requests. Please try again after 10 minutes.' };
   }
 
   const otp = generateOtp();
@@ -61,22 +63,22 @@ function verifyOtp(phone, inputOtp) {
   const record = otpStore.get(phone);
 
   if (!record) {
-    return { success: false, error: 'OTP_NOT_FOUND', message: 'OTP expired ya nahi mila. Phir se request karo.' };
+    return { success: false, error: 'OTP_NOT_FOUND', message: 'OTP expired or not found. Please request a new OTP.' };
   }
 
   if (Date.now() > record.expiresAt) {
     otpStore.delete(phone);
-    return { success: false, error: 'OTP_EXPIRED', message: 'OTP expire ho gaya. Phir se request karo.' };
+    return { success: false, error: 'OTP_EXPIRED', message: 'OTP has expired. Please request a new OTP.' };
   }
 
   if (record.attempts >= MAX_ATTEMPTS) {
     otpStore.delete(phone);
-    return { success: false, error: 'TOO_MANY_ATTEMPTS', message: 'Zyada galat OTP. Phir se request karo.' };
+    return { success: false, error: 'TOO_MANY_ATTEMPTS', message: 'Too many wrong OTP attempts. Please request a new OTP.' };
   }
 
   if (record.otp !== String(inputOtp)) {
     record.attempts++;
-    return { success: false, error: 'WRONG_OTP', message: `Galat OTP. ${MAX_ATTEMPTS - record.attempts} aur chance bache hain.` };
+    return { success: false, error: 'WRONG_OTP', message: `Incorrect OTP. ${MAX_ATTEMPTS - record.attempts} attempt(s) remaining.` };
   }
 
   otpStore.delete(phone);

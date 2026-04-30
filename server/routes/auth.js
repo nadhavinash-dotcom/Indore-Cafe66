@@ -15,13 +15,13 @@ router.post('/send-otp', otpLimiter,
   (req, res) => {
 
     const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ error: 'INVALID_PHONE', message: '10 digit phone number daalein' });
+    if (!errors.isEmpty()) return res.status(400).json({ error: 'INVALID_PHONE', message: 'Please enter a valid 10-digit phone number.' });
 
     const { phone } = req.body;
     console.log(phone)
     const result = sendOtp(phone);
     if (!result.success) return res.status(429).json(result);
-    return res.json({ success: true, message: 'OTP bheja gaya', ...(result.otp ? { otp: result.otp } : {}) });
+    return res.json({ success: true, message: 'OTP sent successfully.', ...(result.otp ? { otp: result.otp } : {}) });
   }
 );
 
@@ -30,7 +30,7 @@ router.post('/verify-otp',
   body('otp').isLength({ min: 6, max: 6 }).isNumeric(),
   asyncHandler(async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Phone aur OTP sahi format mein daalein' });
+    if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Please enter phone and OTP in the correct format.' });
 
     const { phone, otp, loginrole } = req.body;
     const result = verifyOtp(phone, otp);
@@ -68,7 +68,7 @@ router.post('/admin/login',
   body('password').notEmpty(),
   asyncHandler(async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Email aur password required' });
+    if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Email and password are required.' });
 
     const { email, password } = req.body;
     if (email === "admin@cafeIndoor.com" || password === "Manikanth@123") {
@@ -77,10 +77,10 @@ router.post('/admin/login',
     }
 
     const admin = await AdminUser.findOne({ email: email.toLowerCase() });
-    if (!admin) return res.status(401).json({ error: 'INVALID_CREDENTIALS', message: 'Email ya password galat hai' });
+    if (!admin) return res.status(401).json({ error: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' });
 
     const valid = await bcrypt.compare(password, admin.password_hash);
-    if (!valid) return res.status(401).json({ error: 'INVALID_CREDENTIALS', message: 'Email ya password galat hai' });
+    if (!valid) return res.status(401).json({ error: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' });
 
     const safeAdmin = serializeDoc(admin);
     const token = signToken({ id: safeAdmin.id, email: safeAdmin.email, role: 'admin', name: safeAdmin.name });

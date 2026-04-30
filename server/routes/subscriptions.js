@@ -24,7 +24,7 @@ router.post('/pause', verifyToken('customer'),
     if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR' });
 
     const sub = await Subscription.findOne({ customer_id: req.user.id, status: 'active' }).sort({ created_at: -1 });
-    if (!sub) return res.status(400).json({ error: 'NO_ACTIVE_SUB', message: 'Koi active subscription nahi hai.' });
+    if (!sub) return res.status(400).json({ error: 'NO_ACTIVE_SUB', message: 'No active subscription found.' });
 
     const { startDate, endDate } = req.body;
     sub.status = 'paused';
@@ -32,7 +32,7 @@ router.post('/pause', verifyToken('customer'),
     sub.pause_end = endDate;
     await sub.save();
 
-    res.json({ success: true, message: `Subscription ${startDate} se ${endDate} tak pause ho jayegi.` });
+    res.json({ success: true, message: `Subscription will be paused from ${startDate} to ${endDate}.` });
   })
 );
 
@@ -47,7 +47,7 @@ router.post('/cancel', verifyToken('customer'), asyncHandler(async (req, res) =>
   sub.status = 'cancelled';
   await sub.save();
 
-  res.json({ success: true, message: 'Subscription cancel ho gayi.' });
+  res.json({ success: true, message: 'Subscription has been cancelled.' });
 }));
 
 router.get('/all', verifyToken('admin'), asyncHandler(async (req, res) => {

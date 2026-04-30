@@ -3,7 +3,7 @@ function errorHandler(err, req, res, next) {
   const status = err.status || 500;
   res.status(status).json({
     error: err.code || 'SERVER_ERROR',
-    message: err.message || 'Kuch gadbad ho gayi. Phir se try karo.',
+    message: err.message || 'Something went wrong. Please try again.',
   });
 }
 
