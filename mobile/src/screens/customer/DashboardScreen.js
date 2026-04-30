@@ -50,7 +50,7 @@ export default function DashboardScreen({ navigation }) {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Namaste, {customer?.name || 'Friend'} 🙏</Text>
+            <Text style={styles.greeting}>Hello, {customer?.name || 'Friend'}</Text>
             <Text style={styles.date}>{formatISTDate(new Date().toISOString())}</Text>
           </View>
         </View>
