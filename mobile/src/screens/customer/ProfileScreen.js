@@ -51,14 +51,30 @@ export default function ProfileScreen({ navigation }) {
 
   const data = profile || customer;
 
-  const Remainingdays = (e) => {
-    const days = "";
+ const Remainingdays = (endDateStr) => {
+  if (!endDateStr) return 0;
 
-    days = new days() - e
+  const today = new Date();
+  const endDate = new Date(endDateStr);
 
-
-    return days
+  // ❗ check invalid date
+  if (isNaN(endDate.getTime())) {
+    console.log('Invalid endDate:', endDateStr);
+    return 0;
   }
+
+  // normalize both dates
+  today.setHours(0, 0, 0, 0);
+  endDate.setHours(0, 0, 0, 0);
+
+  const diffMs = endDate - today;
+
+  if (diffMs < 0) return 0;
+
+  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24)) + 1;
+
+  return days;
+};
 
   return (
     <SafeAreaView style={styles.container}>

@@ -11,7 +11,7 @@ import Modal from '../../components/ui/Modal';
 import StatusTimeline from '../../components/shared/StatusTimeline';
 
 const STATUS_TRANSITIONS = {
-  confirmed: { nextStatus: 'picked_up', buttonLabel: 'Picked Up Package', buttonVariant: 'primary', subtitle: 'Tap this after collecting the meal from Cafe Indoor.' },
+  conformed: { nextStatus: 'picked_up', buttonLabel: 'Picked Up Package', buttonVariant: 'primary', subtitle: 'Tap this after collecting the meal from Cafe Indoor.' },
   picked_up: { nextStatus: 'in_transit', buttonLabel: 'Start Delivery', buttonVariant: 'warning', subtitle: 'Tap this once you are on the way to the customer.' },
   in_transit: { nextStatus: 'delivered', buttonLabel: 'Mark as Delivered', buttonVariant: 'success', subtitle: 'Tap this after handing the meal to the customer.' },
 };

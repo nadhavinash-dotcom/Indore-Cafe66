@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/theme';
@@ -21,6 +21,18 @@ export default function BookMealScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const isOpen = selectedMeal === 'lunch' ? lunchOpen : dinnerOpen;
+  const [todayOrders, setTodayOrders] = useState([]);
+
+  async function loadData() {
+    try {
+      const ordersRes = await api.get('/orders/today')
+      setTodayOrders(ordersRes.data.orders );
+    } catch (err) {
+      console.error("Load Error", err);
+    }
+  }
+
+  useEffect(() => { loadData(); }, []);
 
   async function handleBook() {
     if (!isOpen) {
@@ -44,6 +56,7 @@ export default function BookMealScreen({ navigation }) {
     }
   }
 
+const isAlreadyBooked = todayOrders.some(order => order.meal_type === selectedMeal);
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -68,7 +81,7 @@ export default function BookMealScreen({ navigation }) {
                 <Text style={[styles.mealLabel, selected && styles.mealLabelSelected]}>
                   {meal.id === 'lunch' ? 'Lunch' : 'Dinner'}
                 </Text>
-                <Text style={styles.cutoffText}>Cutoff: {meal.cutoff}</Text>
+                {/* <Text style={styles.cutoffText}>Cutoff: {meal.cutoff}</Text> */}
                 {!open && <Text style={styles.closedBadge}>Closed</Text>}
               </TouchableOpacity>
             );
@@ -96,7 +109,7 @@ export default function BookMealScreen({ navigation }) {
           title={`Book ${selectedMeal === 'lunch' ? 'Lunch' : 'Dinner'}`}
           onPress={handleBook}
           loading={loading}
-          disabled={!isOpen}
+          disabled={!isOpen || isAlreadyBooked}
         />
       </ScrollView>
     </SafeAreaView>

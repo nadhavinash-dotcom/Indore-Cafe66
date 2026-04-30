@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
+import {
+  View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  RefreshControl, Modal, TextInput, Alert
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/theme';
 import Card from '../../components/ui/Card';
@@ -16,9 +19,15 @@ export default function DashboardScreen({ navigation }) {
   const customer = useAuthStore((s) => s.customer);
   const lunchTimer = useTimerStore((s) => s.lunch);
   const dinnerTimer = useTimerStore((s) => s.dinner);
+
   const [subscription, setSubscription] = useState(null);
   const [todayOrders, setTodayOrders] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  // New States for Address Update
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [newAddress, setNewAddress] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   async function loadData() {
     try {
@@ -26,10 +35,11 @@ export default function DashboardScreen({ navigation }) {
         api.get('/customer/subscription'),
         api.get('/orders/today'),
       ]);
-      console.log(subRes.data.subscription)
       setSubscription(subRes.data.subscription);
       setTodayOrders(ordersRes.data.orders || []);
-    } catch {}
+    } catch (err) {
+      console.error("Load Error", err);
+    }
   }
 
   useEffect(() => { loadData(); }, []);
@@ -40,8 +50,30 @@ export default function DashboardScreen({ navigation }) {
     setRefreshing(false);
   }
 
-  const activeMeal = lunchTimer.isOpen ? 'lunch' : dinnerTimer.isOpen ? 'dinner' : null;
+  // Handle Address Update API Call
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
 
+  const HandleSaveAddress = async () => {
+    setSaving(true);
+    try {
+      // This matches your web logic: sending the editForm to /customer/profile
+      await api.put('/customer/profile', editForm);
+
+      Alert.alert("Success", "Profile updated successfully.");
+      setShowAddressModal(false);
+
+      // Refresh data to show the new address across the app
+      loadData();
+    } catch (error) {
+      Alert.alert("Error", "Unable to save changes.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const activeMeal = lunchTimer.isOpen ? 'lunch' : dinnerTimer.isOpen ? 'dinner' : null;
+const isMealBooked = todayOrders.some(order => order.meal_type === activeMeal);
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -55,7 +87,7 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Countdown Timer */}
+        {/* Timer Card */}
         {activeMeal ? (
           <Card style={styles.timerCard} elevated>
             <CountdownTimer meal={activeMeal} />
@@ -67,39 +99,38 @@ export default function DashboardScreen({ navigation }) {
           </Card>
         )}
 
-        {/* Quick Book CTA */}
-        {activeMeal && (
-          <TouchableOpacity
-            style={styles.bookBtn}
-            onPress={() => navigation.navigate('BookMeal')}
-          >
-            <Text style={styles.bookBtnText}>🍱 Book {activeMeal === 'lunch' ? 'Lunch' : 'Dinner'} Now</Text>
-          </TouchableOpacity>
-        )}
+        {/* Quick Book */}
+        {activeMeal && !isMealBooked ? (
+        <TouchableOpacity 
+          style={styles.bookBtn} 
+          onPress={() => navigation.navigate('BookMeal')}
+        >
+          <Text style={styles.bookBtnText}>
+            🍱 Book {activeMeal === 'lunch' ? 'Lunch' : 'Dinner'} Now
+          </Text>
+        </TouchableOpacity>
+      ) : activeMeal && isMealBooked ? (
+        <View style={[styles.bookBtn, { backgroundColor: COLORS.blackLight, borderWidth: 1, borderColor: COLORS.blackBorder }]}>
+          <Text style={[styles.bookBtnText, { color: COLORS.whiteMuted }]}>
+            ✅ {activeMeal === 'lunch' ? 'Lunch' : 'Dinner'} Already Booked
+          </Text>
+        </View>
+      ) : null}
 
-        {/* Active Subscription */}
-        {subscription ? (
-          <Card style={styles.subCard}>
-            <Text style={styles.sectionTitle}>Active Subscription</Text>
-            <View style={styles.subRow}>
-              <Text style={styles.subLabel}>Plan</Text>
-              <Text style={styles.subValue}>{subscription.meal_type}</Text>
-            </View>
-            {/* <View style={styles.subRow}>
-              <Text style={styles.subLabel}>Meals Left</Text>
-              <Text style={[styles.subValue, { color: COLORS.gold }]}>{subscription.meals_remaining}</Text>
-            </View> */}
-            <View style={styles.subRow}>
-              <Text style={styles.subLabel}>Valid Until</Text>
-              <Text style={styles.subValue}>{formatISTDate(subscription.end_date)}</Text>
-            </View>
-          </Card>
-        ) : (
-          <Card style={styles.subCard} onPress={() => navigation.navigate('Plans')}>
-            <Text style={styles.sectionTitle}>No Active Subscription</Text>
-            <Text style={styles.subCta}>Tap to explore plans →</Text>
-          </Card>
-        )}
+        {/* Subscription Info */}
+        <Card style={styles.subCard}>
+          <Text style={styles.sectionTitle}>{subscription ? 'Active Subscription' : 'No Active Subscription'}</Text>
+          {subscription ? (
+            <>
+              <View style={styles.subRow}><Text style={styles.subLabel}>Plan</Text><Text style={styles.subValue}>{subscription.meal_type}</Text></View>
+              <View style={styles.subRow}><Text style={styles.subLabel}>Valid Until</Text><Text style={styles.subValue}>{formatISTDate(subscription.end_date)}</Text></View>
+            </>
+          ) : (
+            <TouchableOpacity onPress={() => navigation.navigate('Plans')}>
+              <Text style={styles.subCta}>Tap to explore plans →</Text>
+            </TouchableOpacity>
+          )}
+        </Card>
 
         {/* Today's Orders */}
         {todayOrders.length > 0 && (
@@ -111,11 +142,68 @@ export default function DashboardScreen({ navigation }) {
                   <Text style={styles.orderMeal}>{order.meal_type === 'lunch' ? '☀️ Lunch' : '🌙 Dinner'}</Text>
                   <OrderStatusBadge status={order.status} />
                 </View>
+
+                {/* Update Address Button logic: Only if confirmed or picked_up (per your example logic) */}
+                {(order.status === 'conformed' || order.status === 'picked_up') && (
+                  <TouchableOpacity
+                    style={styles.updateAddrBtn}
+                    onPress={() => {
+                      setSelectedOrder(order);
+                      setNewAddress(order.delivery_address || '');
+                      setShowAddressModal(true);
+                    }}
+                  >
+                    <Text style={styles.updateAddrText}>Change Delivery Address</Text>
+                  </TouchableOpacity>
+                )}
               </Card>
             ))}
           </View>
         )}
       </ScrollView>
+
+      {/* Address Update Modal */}
+      <Modal visible={showAddressModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Update Delivery Address</Text>
+              {/* <TouchableOpacity onPress={() => setShowAddressModal(false)}>
+                <Text style={{ color: COLORS.whiteMuted, fontSize: 18 }}>✕</Text>
+              </TouchableOpacity> */}
+            </View>
+
+            <Text style={styles.inputLabel}>Address Line 1</Text>
+            <TextInput
+              style={styles.textInput}
+              multiline
+              numberOfLines={3}
+              placeholder="Enter your house/flat no, building, street..."
+              placeholderTextColor={COLORS.whiteMuted}
+              // Updating the specific key in editForm
+              value={editForm.address_line1 || ''}
+              onChangeText={(text) => setEditForm({ ...editForm, address_line1: text })}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.cancelBtn]}
+                onPress={() => setShowAddressModal(false)}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.saveBtn]}
+                onPress={HandleSaveAddress}
+                disabled={saving}
+              >
+                <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -129,13 +217,7 @@ const styles = StyleSheet.create({
   timerCard: { marginBottom: 16, alignItems: 'center', paddingVertical: 20 },
   closedText: { color: COLORS.whiteMuted, fontSize: 16, textAlign: 'center' },
   closedSub: { color: COLORS.blackBorder, fontSize: 12, textAlign: 'center', marginTop: 4 },
-  bookBtn: {
-    backgroundColor: COLORS.gold,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
+  bookBtn: { backgroundColor: COLORS.gold, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 20 },
   bookBtnText: { color: COLORS.black, fontSize: 16, fontWeight: '700' },
   subCard: { marginBottom: 20 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.white, marginBottom: 12 },
@@ -143,7 +225,21 @@ const styles = StyleSheet.create({
   subLabel: { color: COLORS.whiteMuted, fontSize: 14 },
   subValue: { color: COLORS.white, fontSize: 14, fontWeight: '500' },
   subCta: { color: COLORS.gold, fontSize: 14 },
-  orderCard: { marginBottom: 10 },
+  orderCard: { marginBottom: 10, padding: 15 },
   orderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   orderMeal: { color: COLORS.white, fontSize: 15, fontWeight: '600' },
+  updateAddrBtn: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.blackBorder },
+  updateAddrText: { color: COLORS.gold, fontSize: 13, fontWeight: '600', textAlign: 'center' },
+
+  // Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: COLORS.blackLight || '#1A1A1A', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderTopWidth: 1, borderTopColor: COLORS.gold },
+  modalTitle: { color: COLORS.white, fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
+  textInput: { backgroundColor: COLORS.black, color: COLORS.white, borderRadius: 10, padding: 12, textAlignVertical: 'top', borderWidth: 1, borderColor: COLORS.blackBorder, marginBottom: 20 },
+  modalActions: { flexDirection: 'row', gap: 10 },
+  modalBtn: { flex: 1, padding: 15, borderRadius: 10, alignItems: 'center' },
+  cancelBtn: { backgroundColor: COLORS.blackBorder },
+  saveBtn: { backgroundColor: COLORS.gold },
+  cancelBtnText: { color: COLORS.white, fontWeight: '600' },
+  saveBtnText: { color: COLORS.black, fontWeight: '700' },
 });

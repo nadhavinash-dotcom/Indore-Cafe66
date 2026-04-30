@@ -3,13 +3,13 @@ import { Check, Circle } from 'lucide-react';
 
 const STEPS = [
   { key: 'created', label: 'Order Placed', timeKey: 'created_at' },
-  { key: 'confirmed', label: 'Confirmed', timeKey: 'status_confirmed_at' },
+  { key: 'conformed', label: 'Confirmed', timeKey: 'status_confirmed_at' },
   { key: 'picked_up', label: 'Picked Up', timeKey: 'status_picked_up_at' },
   { key: 'in_transit', label: 'On the Way', timeKey: 'status_in_transit_at' },
   { key: 'delivered', label: 'Delivered', timeKey: 'status_delivered_at' },
 ];
 
-const STATUS_INDEX = { pending: 0, confirmed: 1, picked_up: 2, in_transit: 3, delivered: 4, cancelled: -1 };
+const STATUS_INDEX = { pending: 0, conformed: 1, picked_up: 2, in_transit: 3, delivered: 4, cancelled: -1 };
 
 export default function StatusTimeline({ order }) {
   const currentIdx = STATUS_INDEX[order.status] ?? 0;

@@ -38,7 +38,7 @@ router.get('/orders/today', verifyToken('partner'), asyncHandler(async (req, res
 
 router.put('/orders/:id/status', verifyToken('partner'), asyncHandler(async (req, res) => {
   const { status } = req.body;
-  const validTransitions = { confirmed: 'picked_up', picked_up: 'in_transit', in_transit: 'delivered' };
+  const validTransitions = { conformed: 'picked_up', picked_up: 'in_transit', in_transit: 'delivered' };
   const tsFieldMap = {
     confirmed: 'status_confirmed_at',
     picked_up: 'status_picked_up_at',

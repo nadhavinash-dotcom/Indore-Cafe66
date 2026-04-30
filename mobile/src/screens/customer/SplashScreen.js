@@ -19,8 +19,8 @@ export default function SplashScreen({ navigation }) {
       <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
         <View style={styles.logoContainer}>
           <Text style={styles.logoEmoji}>🍱</Text>
-          <Text style={styles.brand}>Cafe Indoori</Text>
-          <Text style={styles.tagline}>Premium Tiffin Delivery · Indore</Text>
+          <Text style={styles.brand}>Cafe Indoor</Text>
+          <Text style={styles.tagline}>Premium Food Delivery · Indore</Text>
         </View>
 
         <View style={styles.actions}>
@@ -38,12 +38,12 @@ export default function SplashScreen({ navigation }) {
             <Text style={styles.secondaryBtnText}>Delivery Partner Login</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.ghostBtn}
             onPress={() => navigation.navigate('AdminLogin')}
           >
             <Text style={styles.ghostBtnText}>Admin Portal</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </Animated.View>
     </SafeAreaView>
