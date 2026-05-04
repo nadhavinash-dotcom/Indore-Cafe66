@@ -19,7 +19,6 @@ export default function DashboardScreen({ navigation }) {
   const customer = useAuthStore((s) => s.customer);
   const lunchTimer = useTimerStore((s) => s.lunch);
   const dinnerTimer = useTimerStore((s) => s.dinner);
-
   const [subscription, setSubscription] = useState(null);
   const [todayOrders, setTodayOrders] = useState([]);
   const [refreshing, setRefreshing] = useState(false);

@@ -35,6 +35,8 @@ const useAuthStore = create((set, get) => ({
     set({ [role]: userPayload });
   },
 
+  
+
   clearAuth: async (role) => {
     await AsyncStorage.multiRemove([KEYS[role].token, KEYS[role].user]);
     set({ [role]: null });

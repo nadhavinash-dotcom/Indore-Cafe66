@@ -7,7 +7,7 @@ import Button from '../../components/ui/Button';
 import OtpInput from '../../components/ui/OtpInput';
 import useOtp from '../../hooks/useOtp';
 import useAuthStore from '../../store/authStore';
-import { registerForPushNotificationsAsync } from '../../lib/notifications';
+// import { registerForPushNotificationsAsync } from '../../lib/notifications';
 
 export default function PartnerLoginScreen({ navigation }) {
   const [phone, setPhone] = useState('');
@@ -24,9 +24,10 @@ export default function PartnerLoginScreen({ navigation }) {
 
   async function handleVerify(otp) {
     const result = await verifyOtp(otp, 'partner');
-    if (result.success) {
-      await setAuth('partner', result.data);
-      registerForPushNotificationsAsync('partner').catch(() => {});
+    console.log(result)
+    if (result) {
+      await setAuth('partner', result);
+      // registerForPushNotificationsAsync('partner').catch(() => {});
     }
   }
 

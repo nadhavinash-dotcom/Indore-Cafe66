@@ -15,9 +15,9 @@ export default function PartnerDashboardScreen({ navigation }) {
 
   async function loadOrders() {
     try {
-      const { data } = await api.get('/partner/orders/today');
-      setOrders(data.orders || []);
-      setDate(data.date || '');
+      const res = await api.get('/partner/orders/today');
+      setOrders(res.data?.orders ?? []);
+      setDate(res.data?.date ?? '');
     } catch {} finally {
       setLoading(false);
     }

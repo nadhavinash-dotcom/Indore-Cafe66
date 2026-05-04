@@ -42,13 +42,12 @@ export default function useOtp() {
     await sendOtp(phone);
   }
 
-  async function verifyOtp(otp, role) {
+  async function verifyOtp(otp, loginrole) {
     setError('');
     setLoading(true);
     try {
-      const endpoint = role === 'partner' ? '/auth/verify-otp' :'/auth/verify-otp';
-      const { data } = await api.post(endpoint, { phone, otp });
-      return { success: true, data };
+      const res = await api.post('/auth/verify-otp', { phone, otp,loginrole });
+      return res.data;
     } catch (err) {
       const msg = err.response?.data?.message || 'Invalid OTP';
       setError(msg);

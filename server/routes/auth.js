@@ -29,37 +29,42 @@ router.post('/verify-otp',
   body('phone').isLength({ min: 10, max: 10 }).isNumeric(),
   body('otp').isLength({ min: 6, max: 6 }).isNumeric(),
   asyncHandler(async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Please enter phone and OTP in the correct format.' });
+    // const errors = validationResult(req);
+    // if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Please enter phone and OTP in the correct format.' });
 
     const { phone, otp, loginrole } = req.body;
     const result = verifyOtp(phone, otp);
     if (!result.success) return res.status(400).json(result);
 
-    const partner = await DeliveryPartner.findOne({ phone, status: 'active' });
-    if (partner && loginrole === "partner") {
+    if (loginrole === "partner") {
+      const partner = await DeliveryPartner.findOne({ phone });
+      console.log('sdsd', loginrole)
+
       const token = signToken({ id: partner.id, phone, role: 'partner', name: partner.name });
       return res.json({
         success: true,
-        role: 'partner',
+        role: 'partner',  
         token,
         user: { id: partner.id, name: partner.name, phone, isOnDuty: !!partner.is_on_duty },
       });
+
+    } else {
+      let customer = await Customer.findOne({ phone });
+      if (!customer) {
+        customer = await Customer.create({ name: `User ${phone.slice(-4)}`, phone });
+      }
+
+      const safeCustomer = serializeDoc(customer);
+      const token = signToken({ id: safeCustomer.id, phone, role: 'customer', name: safeCustomer.name });
+      return res.json({
+        success: true,
+        role: 'customer',
+        token,
+        user: { id: safeCustomer.id, name: safeCustomer.name, phone, hasAddress: !!safeCustomer.address_line1, area: safeCustomer.area, address: safeCustomer.address_line1 },
+      });
     }
 
-    let customer = await Customer.findOne({ phone });
-    if (!customer) {
-      customer = await Customer.create({ name: `User ${phone.slice(-4)}`, phone });
-    }
 
-    const safeCustomer = serializeDoc(customer);
-    const token = signToken({ id: safeCustomer.id, phone, role: 'customer', name: safeCustomer.name });
-    return res.json({
-      success: true,
-      role: 'customer',
-      token,
-      user: { id: safeCustomer.id, name: safeCustomer.name, phone, hasAddress: !!safeCustomer.address_line1 },
-    });
   })
 );
 

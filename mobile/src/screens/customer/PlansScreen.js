@@ -32,7 +32,7 @@ export default function PlansScreen({ navigation }) {
     try {
       const res = await api.get('/admin/settings');
       const s = res.data.settings;
-      console.log(res)
+      // console.log(res)
       setPrices({
         monthly: {
           lunch: Number(s.monthly_single_price),
@@ -62,8 +62,8 @@ export default function PlansScreen({ navigation }) {
   function handleNext() {
     const plan = PLANS.find((p) => p.id === selectedPlan);
     const finalPrice = getPrice(selectedPlan, mealChoice);
-    console.log(finalPrice,plan,mealChoice)
-    navigation.navigate('Checkout', {
+    // console.log(finalPrice,plan,mealChoice)
+    navigation.navigate('Payment', {
       plan,
       mealChoice,
       price: finalPrice,

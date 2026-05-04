@@ -6,9 +6,36 @@ import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 
 const AREAS = [
-  'Vijay Nagar', 'Scheme 54', 'AB Road', 'Palasia', 'Sapna Sangeeta',
-  'Bhawarkua', 'Rajwada', 'Tilak Nagar', 'MR 10', 'Bicholi Mardana',
-  'Rau', 'Nipania', 'Sudama Nagar', 'Lasudia', 'Banganga',
+  // Central / Popular
+  'Banjara Hills', 'Jubilee Hills', 'Ameerpet', 'Begumpet', 'Punjagutta',
+  'Somajiguda', 'Khairatabad', 'Lakdikapul',
+
+  // IT Corridor
+  'HITEC City', 'Madhapur', 'Gachibowli', 'Kondapur', 'Manikonda',
+  'Nanakramguda', 'Financial District', 'Kokapet',
+
+  // West Hyderabad
+  'Kukatpally', 'KPHB', 'Moosapet', 'Miyapur', 'Bachupally', 'Nizampet',
+  'Chanda Nagar', 'Lingampally', 'Beeramguda', 'Patancheru',
+
+  // North
+  'Secunderabad', 'Trimulgherry', 'Alwal', 'Kompally', 'Suchitra',
+  'Bolarum', 'Medchal', 'Jeedimetla',
+
+  // East
+  'Uppal', 'Nagole', 'LB Nagar', 'Dilsukhnagar', 'Kothapet',
+  'Vanastalipuram', 'Hayathnagar', 'Pocharam',
+
+  // South
+  'Mehdipatnam', 'Tolichowki', 'Attapur', 'Rajendranagar',
+  'Shamshabad', 'Falaknuma', 'Chandrayangutta',
+
+  // Old City
+  'Charminar', 'Yakutpura', 'Dabirpura', 'Malakpet', 'Saidabad',
+
+  // Other Important Areas
+  'Hafeezpet', 'Serilingampally', 'Tellapur', 'Osman Nagar',
+  'Appa Junction', 'Bandlaguda', 'Nagaram', 'ECIL', 'Kapra'
 ];
 
 export default function AddressScreen({ navigation, route }) {

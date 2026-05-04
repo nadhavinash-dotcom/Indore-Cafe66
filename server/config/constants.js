@@ -4,10 +4,10 @@ const CUTOFF_HOURS = {
 };
 
 const PLAN_PRICES = {
-  monthly_both: 480000,   // ₹4800 in paise
-  monthly_single: 288000, // ₹2880 in paise (60%)
-  trial_both: 140000,     // ₹1400 in paise
-  trial_single: 84000,    // ₹840 in paise (60%)
+  monthly_both: 4800,   // ₹4800
+  monthly_single: 2880, // ₹2880
+  trial_both: 1400,     // ₹1400
+  trial_single: 840,    // ₹840
 };
 
 const PLAN_DURATIONS = {

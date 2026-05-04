@@ -53,8 +53,10 @@ export default function OrderDetailScreen({ navigation, route }) {
         </TouchableOpacity>
 
         <View style={styles.header}>
-          <Text style={styles.title}>Order #{order.id}</Text>
-          <OrderStatusBadge status={order.status} />
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>Order {order.id}</Text>
+            <OrderStatusBadge status={order.status} style={{ marginLeft: 5, marginTop: 26 }} />
+          </View>
         </View>
 
         <Card style={styles.customerCard}>
@@ -118,4 +120,5 @@ const styles = StyleSheet.create({
   actionBtn: {},
   successCard: { marginTop: 12, alignItems: 'center' },
   successText: { color: COLORS.success, fontSize: 16, fontWeight: '700' },
+
 });

@@ -9,7 +9,7 @@ const { serializeDoc } = require('../utils/mongo');
 
 const router = express.Router();
 
-router.get('/orders/today', verifyToken('partner'), asyncHandler(async (req, res) => {
+router.get('/orders/today',verifyToken('partner'), asyncHandler(async (req, res) => {
   const today = getISTDateString();
   const orders = await Order.find({
     partner_id: req.user.id,
@@ -18,6 +18,7 @@ router.get('/orders/today', verifyToken('partner'), asyncHandler(async (req, res
   })
     .populate('customer_id', 'name phone address_line1 address_line2 area landmark pincode meal_preference special_instructions')
     .sort({ 'customer_id.area': 1, 'customer_id.name': 1 });
+  console.log(req.user.id)
 
   const serializedOrders = orders.map((order) => {
     const item = serializeDoc(order);
@@ -75,6 +76,7 @@ router.put('/duty', verifyToken('partner'), asyncHandler(async (req, res) => {
 
 router.get('/profile', verifyToken('partner'), asyncHandler(async (req, res) => {
   const partner = await DeliveryPartner.findById(req.user.id);
+  console.log(serializeDoc(partner) )
   res.json({ partner: partner ? serializeDoc(partner) : null });
 }));
 

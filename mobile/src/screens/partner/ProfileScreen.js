@@ -18,7 +18,7 @@ export default function PartnerProfileScreen() {
     api.get('/partner/profile').then(({ data }) => {
       setProfile(data.partner);
       setOnDuty(!!data.partner?.is_on_duty);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   async function toggleDuty() {
@@ -26,7 +26,7 @@ export default function PartnerProfileScreen() {
     try {
       const { data } = await api.put('/partner/duty', { isOnDuty: !onDuty });
       setOnDuty(data.isOnDuty);
-    } catch {} finally {
+    } catch { } finally {
       setDutyLoading(false);
     }
   }
@@ -39,6 +39,27 @@ export default function PartnerProfileScreen() {
   }
 
   const data = profile || partner;
+  const [delivered, setDelivered] = useState(0);
+
+  async function loadOrders() {
+    try {
+      const res = await api.get('/partner/orders/today');
+
+      const count = res?.data?.orders?.filter(
+        (o) => o.status === 'delivered'
+      ).length || 0;
+
+      setDelivered(count);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -69,9 +90,9 @@ export default function PartnerProfileScreen() {
         {profile && (
           <Card style={styles.infoCard}>
             <InfoRow label="Vehicle" value={profile.vehicle_type} />
-            <InfoRow label="Total Deliveries" value={String(profile.total_deliveries || 0)} />
+            <InfoRow label="Total Deliveries" value={delivered} />
             <InfoRow label="Rating" value={profile.rating ? `${profile.rating}/5` : 'New'} />
-            <InfoRow label="Areas" value={JSON.parse(profile.area_coverage || '[]').join(', ') || 'All areas'} />
+            <InfoRow label="Areas" value={profile.area_coverage} />
           </Card>
         )}
 

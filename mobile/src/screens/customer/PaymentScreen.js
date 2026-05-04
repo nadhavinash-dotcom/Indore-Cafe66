@@ -6,50 +6,94 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import api from '../../lib/api';
 import useAuthStore from '../../store/authStore';
+import RazorpayCheckout from 'react-native-razorpay';
 
 export default function PaymentScreen({ navigation, route }) {
-  const { plan, mealPref, area, addressLine, landmark } = route.params;
+  const { plan, mealChoice, price } = route.params;
   const [loading, setLoading] = useState(false);
   const customer = useAuthStore((s) => s.customer);
 
-  async function handlePayment() {
+  const handlePayment = async () => {
     setLoading(true);
     try {
+      // Start date = tomorrow to avoid same-day cutoff issues
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const selectedStartDate = tomorrow.toISOString().split('T')[0];
+
+      // 1. Create order on backend (sends auth token via api interceptor)
       const { data: orderData } = await api.post('/payment/create-order', {
-        planId: plan.id,
-        amount: plan.price,
+        planType: plan.id,
+        mealType: mealChoice,
+        subscriptionPlan: {
+          selectedStartDate,
+          mealStartDates: {
+            lunch: mealChoice !== 'dinner' ? selectedStartDate : null,
+            dinner: mealChoice !== 'lunch' ? selectedStartDate : null,
+          },
+        },
       });
 
-      // In dev/mock mode the server returns success immediately
-      if (orderData.mock) {
-        await confirmSubscription(orderData.razorpayOrderId, 'mock_payment', 'mock_signature');
+      // Mock mode: skip Razorpay UI, call verify directly
+      if (orderData.isMock) {
+        const { data: verifyData } = await api.post('/payment/verify', {
+          razorpay_order_id: orderData.razorpayOrderId,
+          razorpay_payment_id: `mock_pay_${Date.now()}`,
+          razorpay_signature: '',
+        });
+        if (verifyData.success) {
+          Alert.alert('Success', 'Subscription Confirmed!', [
+            { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
+          ]);
+        }
         return;
       }
 
-      // Real Razorpay: open web browser or SDK
-      Alert.alert('Payment', 'Razorpay integration requires native SDK in production build.');
-    } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Payment failed');
+      // 2. Open Razorpay Checkout
+      const options = {
+        description: `Subscription for ${plan.name}`,
+        image: 'https://i.imgur.com/3g7nmJC.png',
+        currency: orderData.currency,
+        key: orderData.keyId,
+        amount: orderData.amount,
+        name: 'Cafe Indore',
+        order_id: orderData.razorpayOrderId,
+        prefill: {
+          email: customer?.email || '',
+          contact: customer?.phone || '',
+          name: customer?.name || '',
+        },
+        theme: { color: COLORS.emerald },
+      };
+
+      const payData = await RazorpayCheckout.open(options);
+
+      // 3. Verify payment on backend (sends auth token via api interceptor)
+      const { data: verifyData } = await api.post('/payment/verify', {
+        razorpay_order_id: payData.razorpay_order_id,
+        razorpay_payment_id: payData.razorpay_payment_id,
+        razorpay_signature: payData.razorpay_signature,
+      });
+
+      if (verifyData.success) {
+        Alert.alert('Success', 'Subscription Confirmed!', [
+          { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
+        ]);
+      }
+    } catch (error) {
+      if (error.description) {
+        // Razorpay SDK error (cancelled or failed)
+        Alert.alert('Payment Failed', error.description || 'Payment was cancelled');
+      } else {
+        console.error(error);
+        Alert.alert('Error', error.response?.data?.message || 'Could not complete payment');
+      }
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function confirmSubscription(razorpayOrderId, paymentId, signature) {
-    const { data } = await api.post('/payment/verify', {
-      razorpayOrderId,
-      razorpayPaymentId: paymentId,
-      razorpaySignature: signature,
-      planId: plan.id,
-      mealPreference: mealPref,
-      area,
-      addressLine1: addressLine,
-      landmark: landmark || '',
-    });
-    if (data.success) {
-      navigation.replace('PaymentSuccess', { subscription: data.subscription });
-    }
-  }
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -57,19 +101,19 @@ export default function PaymentScreen({ navigation, route }) {
         <Text style={styles.title}>Order Summary</Text>
 
         <Card style={styles.summaryCard}>
-          <Row label="Plan" value={plan.name} />
+          <Row label="Plan" value={plan?.name} />
           <Row label="Duration" value={`${plan.days} days`} />
-          <Row label="Meal Preference" value={mealPref.charAt(0).toUpperCase() + mealPref.slice(1)} />
-          <Row label="Area" value={area} />
-          <Row label="Address" value={addressLine} />
+          <Row label="Meal Choice" value={mealChoice.charAt(0).toUpperCase() + mealChoice.slice(1)} />
+          <Row label="Area" value={customer?.area} />
+          <Row label="Address" value={customer?.address} />
           <View style={styles.divider} />
-          <Row label="Total" value={`₹${plan.price}`} highlight />
+          <Row label="Total" value={`₹${price}`} highlight />
         </Card>
 
         <Text style={styles.note}>Payment secured by Razorpay</Text>
 
         <Button
-          title={`Pay ₹${plan.price}`}
+          title={`Pay ₹${price}`}
           onPress={handlePayment}
           loading={loading}
           style={styles.payBtn}
