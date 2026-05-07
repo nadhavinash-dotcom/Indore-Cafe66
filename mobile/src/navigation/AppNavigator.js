@@ -16,7 +16,7 @@ export default function AppNavigator() {
   const { customer, partner, admin, hydrated } = useAuthStore();
 
   if (!hydrated) return null;
-
+console.log(customer?.token)
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
       {customer?.token ? (

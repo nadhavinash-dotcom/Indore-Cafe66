@@ -25,8 +25,9 @@ export default function CustomerLoginScreen({ navigation }) {
   async function handleVerify(otp) {
     const result = await verifyOtp(otp, 'customer');
     if (result.success) {
-      await setAuth('customer', result.data);
+      await setAuth('customer', result);
       registerForPushNotificationsAsync('customer').catch(() => {});
+
     }
   }
 

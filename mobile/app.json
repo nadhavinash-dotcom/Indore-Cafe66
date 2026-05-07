@@ -2,6 +2,7 @@
   "expo": {
     "name": "Cafe Indoori",
     "slug": "cafe-indoori",
+    "owner": "manikanthtarine",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -9,7 +10,9 @@
     "splash": {
       "backgroundColor": "#0D0D0D"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.cafeindoori.app"
@@ -37,7 +40,7 @@
     "extra": {
       "apiUrl": "http://localhost:3001",
       "eas": {
-        "projectId": "cafe-indoori-project-id"
+        "projectId": "f3585f8b-751e-4191-a687-12c897dbcaf1"
       }
     }
   }
