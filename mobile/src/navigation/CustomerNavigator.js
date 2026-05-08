@@ -54,9 +54,9 @@ export default function CustomerNavigator() {
       <Stack.Screen name="Plans" component={PlansScreen} />
       <Stack.Screen name="Address" component={AddressScreen} />
       <Stack.Screen name="Payment" component={PaymentScreen} />
-            <Stack.Screen name="Checkout" component={PaymentScreen} />
+      <Stack.Screen name="Checkout" component={PaymentScreen} />
 
-      <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
+      <Stack.Screen name="Success" component={PaymentSuccessScreen} />
     </Stack.Navigator>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/theme';
@@ -6,7 +6,13 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import api from '../../lib/api';
 import useAuthStore from '../../store/authStore';
-import RazorpayCheckout from 'react-native-razorpay';
+import {
+  CFPaymentGatewayService,
+  CFEnvironment,
+  CFSession,
+  CFThemeBuilder,
+  CFDropCheckoutPayment,
+} from 'react-native-cashfree-pg-sdk';
 
 export default function PaymentScreen({ navigation, route }) {
   const { plan, mealChoice, price } = route.params;
@@ -23,6 +29,11 @@ export default function PaymentScreen({ navigation, route }) {
 
       // 1. Create order on backend (sends auth token via api interceptor)
       const { data: orderData } = await api.post('/payment/create-order', {
+
+        orderAmount: price,
+        customerName: customer?.name,
+        customerPhone: customer?.phone,
+        customerEmail: customer?.email === undefined ? "manikanththarine31@gmail.com" : "customer?.email",
         planType: plan.id,
         mealType: mealChoice,
         subscriptionPlan: {
@@ -34,52 +45,77 @@ export default function PaymentScreen({ navigation, route }) {
         },
       });
 
-      // Mock mode: skip Razorpay UI, call verify directly
-      if (orderData.isMock) {
-        const { data: verifyData } = await api.post('/payment/verify', {
-          razorpay_order_id: orderData.razorpayOrderId,
-          razorpay_payment_id: `mock_pay_${Date.now()}`,
-          razorpay_signature: '',
-        });
-        if (verifyData.success) {
-          Alert.alert('Success', 'Subscription Confirmed!', [
-            { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
-          ]);
-        }
-        return;
-      }
+      console.log(orderData)
 
-      // 2. Open Razorpay Checkout
-      const options = {
-        description: `Subscription for ${plan.name}`,
-        image: 'https://i.imgur.com/3g7nmJC.png',
-        currency: orderData.currency,
-        key: orderData.keyId,
-        amount: orderData.amount,
-        name: 'Cafe Indore',
-        order_id: orderData.razorpayOrderId,
-        prefill: {
-          email: customer?.email || '',
-          contact: customer?.phone || '',
-          name: customer?.name || '',
-        },
-        theme: { color: COLORS.emerald },
-      };
+      const payment_session_id = orderData.payment_session_id;
 
-      const payData = await RazorpayCheckout.open(options);
+      const session = new CFSession(
+        payment_session_id,
+        orderData.order_id,
+        CFEnvironment.SANDBOX
+      );
+      const theme = new CFThemeBuilder()
+        .setNavigationBarBackgroundColor('#000000')
+        .setNavigationBarTextColor('#FFFFFF')
+        .setButtonBackgroundColor('#000000')
+        .setButtonTextColor('#FFFFFF')
+        .build();
 
-      // 3. Verify payment on backend (sends auth token via api interceptor)
-      const { data: verifyData } = await api.post('/payment/verify', {
-        razorpay_order_id: payData.razorpay_order_id,
-        razorpay_payment_id: payData.razorpay_payment_id,
-        razorpay_signature: payData.razorpay_signature,
-      });
+      const dropPayment = new CFDropCheckoutPayment(
+        session,
+        null,
+        theme
+      );
 
-      if (verifyData.success) {
-        Alert.alert('Success', 'Subscription Confirmed!', [
-          { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
-        ]);
-      }
+      CFPaymentGatewayService.doPayment(dropPayment);
+
+
+      // // Mock mode: skip Razorpay UI, call verify directly
+      // if (orderData.isMock) {
+      //   const { data: verifyData } = await api.post('/payment/verify', {
+      //     razorpay_order_id: orderData.razorpayOrderId,
+      //     razorpay_payment_id: `mock_pay_${Date.now()}`,
+      //     razorpay_signature: '',
+      //   });
+      //   if (verifyData.success) {
+      //     Alert.alert('Success', 'Subscription Confirmed!', [
+      //       { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
+      //     ]);
+      //   }
+      //   return;
+      // }
+
+      // // 2. Open Razorpay Checkout
+      // const options = {
+      //   description: `Subscription for ${plan.name}`,
+      //   image: 'https://i.imgur.com/3g7nmJC.png',
+      //   currency: orderData.currency,
+      //   key: orderData.keyId,
+      //   amount: orderData.amount,
+      //   name: 'Cafe Indore',
+      //   order_id: orderData.razorpayOrderId,
+      //   prefill: {
+      //     email: customer?.email || '',
+      //     contact: customer?.phone || '',
+      //     name: customer?.name || '',
+      //   },
+      //   theme: { color: COLORS.emerald },
+      // };
+
+      // const payData = await RazorpayCheckout.open(options);
+
+      // // 3. Verify payment on backend (sends auth token via api interceptor)
+      // const { data: verifyData } = await api.post('/payment/verify', {
+      //   razorpay_order_id: payData.razorpay_order_id,
+      //   razorpay_payment_id: payData.razorpay_payment_id,
+      //   razorpay_signature: payData.razorpay_signature,
+      // });
+
+      // if (verifyData.success) {
+      //   Alert.alert('Success', 'Subscription Confirmed!', [
+      //     { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
+      //   ]);
+      // }
     } catch (error) {
       if (error.description) {
         // Razorpay SDK error (cancelled or failed)
@@ -93,7 +129,32 @@ export default function PaymentScreen({ navigation, route }) {
     }
   };
 
+  useEffect(() => {
 
+    CFPaymentGatewayService.setCallback({
+      onVerify(orderID) {
+
+        console.log('VERIFY:', orderID);
+
+        navigation.replace('Success');
+      },
+
+      onError(error, orderID) {
+
+        console.log('ERROR:', error, orderID);
+
+        Alert.alert(
+          'Payment Failed',
+          error?.message || 'Something went wrong'
+        );
+      },
+    });
+
+    return () => {
+      CFPaymentGatewayService.removeCallback();
+    };
+
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>

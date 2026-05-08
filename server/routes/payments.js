@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const { addDays, getISTDateString, isCutoffPassed } = require('../services/timeService');
-const {getRazorpay, createOrder, verifySignature } = require('../services/razorpayService');
+const { getRazorpay, createOrder, verifySignature } = require('../services/razorpayService');
 const { calculateCheckoutAmount, getCheckoutConfig } = require('../services/paymentConfigService');
 const { verifyToken } = require('../middleware/auth');
 const { PaymentAttempt, Subscription } = require('../models');
@@ -11,6 +11,23 @@ const { serializeDoc } = require('../utils/mongo');
 const { PLAN_DURATIONS } = require('../config/constants');
 
 const router = express.Router();
+
+const {
+  Cashfree,
+  CFEnvironment,
+} = require('cashfree-pg');
+
+
+
+
+// CASHFREE CONFIG
+Cashfree.XClientId = process.env.CASHFREE_APP_ID;
+Cashfree.XClientSecret = process.env.CASHFREE_SECRET_KEY;
+
+Cashfree.XEnvironment =
+  process.env.CASHFREE_ENV === 'PRODUCTION'
+    ? CFEnvironment.PRODUCTION
+    : CFEnvironment.SANDBOX;
 
 function isValidDateString(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
@@ -105,7 +122,7 @@ router.get('/checkout-config', asyncHandler(async (_req, res) => {
 }));
 
 
-router.post('/create-order', verifyToken('customer'),
+router.post('/create-order',
   body('planType').isIn(['monthly', 'trial']),
   body('mealType').isIn(['lunch', 'dinner', 'both']),
   body('couponCode').optional({ values: 'falsy' }).isString().trim().isLength({ max: 50 }),
@@ -115,59 +132,121 @@ router.post('/create-order', verifyToken('customer'),
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR' });
 
-    const { planType, mealType, couponCode, subscriptionPlan = {} } = req.body;
-    const { selectedStartDate } = subscriptionPlan;
-    const mealStartDates = normalizeMealStartDates({
-      mealType,
-      selectedStartDate,
-      mealStartDates: subscriptionPlan.mealStartDates,
-    });
+    // const { planType, mealType, couponCode, subscriptionPlan = {} } = req.body;
 
-    validateStartDates({ mealType, selectedStartDate, mealStartDates });
 
-    const durationDays = PLAN_DURATIONS[planType];
-    const endDate = addDays(selectedStartDate, durationDays - 1);
-    const { amount, baseAmount, appliedCoupon } = await calculateCheckoutAmount({
-      planType,
-      mealType,
-      couponCode,
-    });
+    try {
 
-    const receipt = `ci_${req.user.id}_${Date.now()}`;
-    const order = await createOrder({
-      amount,
-      receipt,
-      notes: {
-        customerId: String(req.user.id),
-        planType,
-        mealType,
-        startDate: selectedStartDate,
-      },
-    });
+      const {
+        orderAmount,
+        customerName,
+        customerPhone,
+        customerEmail,
+        planType, mealType, couponCode, subscriptionPlan = {}
+      } = req.body;
 
-    await PaymentAttempt.create({
-      customer_id: req.user.id,
-      plan_type: planType,
-      meal_type: mealType,
-      coupon_code: appliedCoupon?.code || null,
-      base_amount: baseAmount,
-      amount: order.amount,
-      currency: order.currency || 'INR',
-      receipt,
-      razorpay_order_id: order.id,
-      start_date: selectedStartDate,
-      end_date: endDate,
-      meal_start_dates: mealStartDates,
-      status: 'created',
-    });
+      const orderId = `ORDER_${Date.now()}`;
+      const request = {
+        order_id: orderId,
+        order_amount: Number(orderAmount),
+        order_currency: "INR",
 
-    res.json({
-      razorpayOrderId: order.id,
-      amount: order.amount,
-      currency: order.currency || 'INR',
-      keyId: process.env.RAZORPAY_KEY_ID || '',
-      isMock: !!order.mock,
-    });
+        customer_details: {
+          customer_id: "69fae3a58c2feafcd74bc335",
+          customer_name: customerName,
+          customer_email: customerEmail,
+          customer_phone: customerPhone,
+        },
+
+        order_meta: {
+          return_url:
+            "https://test.cashfree.com/pgappsdemos/return.php?order_id={order_id}",
+        },
+      };
+
+      console.log("REQUEST =>", request);
+
+      const response = await Cashfree.PGCreateOrder(
+        "2022-09-01",
+        request
+      );
+
+      console.log("RESPONSE =>", response.data);
+
+      return res.status(200).json({
+        success: true,
+        orderId,
+        payment_session_id:
+          response.data.payment_session_id,
+      });
+
+      // const { selectedStartDate } = subscriptionPlan;
+      //     const mealStartDates = normalizeMealStartDates({
+      //       mealType,
+      //       selectedStartDate,
+      //       mealStartDates: subscriptionPlan.mealStartDates,
+      //     });
+
+      //     validateStartDates({ mealType, selectedStartDate, mealStartDates });
+
+      //     const durationDays = PLAN_DURATIONS[planType];
+      //     const endDate = addDays(selectedStartDate, durationDays - 1);
+      //     const { amount, baseAmount, appliedCoupon } = await calculateCheckoutAmount({
+      //       planType,
+      //       mealType,
+      //       couponCode,
+      //     });
+
+      //     const receipt = `ci_${req.user.id}_${Date.now()}`;
+      //     const order = await createOrder({
+      //       amount,
+      //       receipt,
+      //       notes: {
+      //         customerId: String(req.user.id),
+      //         planType,
+      //         mealType,
+      //         startDate: selectedStartDate,
+      //       },
+      //     });
+
+      //     await PaymentAttempt.create({
+      //       customer_id: req.user.id,
+      //       plan_type: planType,
+      //       meal_type: mealType,
+      //       coupon_code: appliedCoupon?.code || null,
+      //       base_amount: baseAmount,
+      //       amount: order.amount,
+      //       currency: order.currency || 'INR',
+      //       receipt,
+      //       razorpay_order_id: order.id,
+      //       start_date: selectedStartDate,
+      //       end_date: endDate,
+      //       meal_start_dates: mealStartDates,
+      //       status: 'created',
+      //     });
+
+      //     res.json({
+      //       razorpayOrderId: order.id,
+      //       amount: order.amount,
+      //       currency: order.currency || 'INR',
+      //       keyId: process.env.RAZORPAY_KEY_ID || '',
+      //       isMock: !!order.mock,
+      //     });
+
+
+
+    } catch (error) {
+
+      console.log(error?.response?.data || error);
+
+      return res.status(500).json({
+        success: false,
+        message: 'Order creation failed',
+      });
+    }
+
+
+
   })
 );
 

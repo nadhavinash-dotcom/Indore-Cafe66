@@ -1,10 +1,18 @@
 {
   "expo": {
-    "name": "Cafe Indoori",
-    "slug": "cafe-indoori",
-    "owner": "manikanthtarine",
+    "name": "CafeIndoor",
+    "slug": "cafe-indoor",
     "version": "1.0.0",
     "orientation": "portrait",
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9ae7f93a-643d-454e-accc-73ed3a163e2c"
+      }
+    },
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
@@ -15,13 +23,13 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.cafeindoori.app"
+      "bundleIdentifier": "com.manikanthtarine.cafeindoor"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0D0D0D"
       },
-      "package": "com.cafeindoori.app",
+      "package": "com.manikanthtarine.cafeindoor",
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE"
@@ -35,13 +43,9 @@
           "color": "#C9922A",
           "sounds": []
         }
-      ]
+      ],
+      "expo-font"
     ],
-    "extra": {
-      "apiUrl": "http://localhost:3001",
-      "eas": {
-        "projectId": "f3585f8b-751e-4191-a687-12c897dbcaf1"
-      }
-    }
+    "newArchEnabled": true
   }
 }
