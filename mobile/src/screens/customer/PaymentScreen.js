@@ -33,7 +33,9 @@ export default function PaymentScreen({ navigation, route }) {
         orderAmount: price,
         customerName: customer?.name,
         customerPhone: customer?.phone,
-        customerEmail: customer?.email === undefined ? "manikanththarine31@gmail.com" : "customer?.email",
+        customerEmail: customer?.email
+          ? customer.email
+          : "manikanththarine31@gmail.com",
         planType: plan.id,
         mealType: mealChoice,
         subscriptionPlan: {
@@ -50,8 +52,8 @@ export default function PaymentScreen({ navigation, route }) {
       const payment_session_id = orderData.payment_session_id;
 
       const session = new CFSession(
-        payment_session_id,
         orderData.order_id,
+        payment_session_id,
         CFEnvironment.SANDBOX
       );
       const theme = new CFThemeBuilder()
@@ -117,13 +119,15 @@ export default function PaymentScreen({ navigation, route }) {
       //   ]);
       // }
     } catch (error) {
-      if (error.description) {
-        // Razorpay SDK error (cancelled or failed)
-        Alert.alert('Payment Failed', error.description || 'Payment was cancelled');
-      } else {
-        console.error(error);
-        Alert.alert('Error', error.response?.data?.message || 'Could not complete payment');
-      }
+      // if (error.description) {
+      //   // Razorpay SDK error (cancelled or failed)
+      //   Alert.alert('Payment Failed', error.description || 'Payment was cancelled');
+      // } else {
+      console.error(error);
+      Alert.alert(
+        'Error',
+        error?.message || 'Could not complete payment'
+      );      // }
     } finally {
       setLoading(false);
     }

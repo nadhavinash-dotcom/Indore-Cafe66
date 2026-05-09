@@ -44,8 +44,7 @@
           "sounds": []
         }
       ],
-      "expo-font",
-      "react-native-cashfree-pg-sdk"
+      "expo-font"
     ],
     "newArchEnabled": true
   }
