@@ -133,7 +133,7 @@ export default function PaymentScreen({ navigation, route }) {
     }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
 
     CFPaymentGatewayService.setCallback({
       onVerify(orderID) {
