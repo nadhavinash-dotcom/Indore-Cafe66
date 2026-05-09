@@ -2,7 +2,7 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL ='https://snowsuit-spooky-landowner.ngrok-free.dev';
+const BASE_URL ='http://cafe-indoor-backend.vercel.app';
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api`,
@@ -11,7 +11,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  const url = config.url || '';
+  const url = config.url || ''; 
   let tokenKey;
   if (url.startsWith('/admin') || url.startsWith('/auth/admin')) {
     tokenKey = 'ci_admin_token';
