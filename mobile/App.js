@@ -20,18 +20,18 @@ export default function App() {
   useEffect(() => {
     hydrate();
 
-    notifReceivedRef.current = addNotificationReceivedListener((notification) => {
-      console.log('[Push] Received:', notification);
-    });
+    // notifReceivedRef.current = addNotificationReceivedListener((notification) => {
+    //   console.log('[Push] Received:', notification);
+    // });
 
-    notifResponseRef.current = addNotificationResponseReceivedListener((response) => {
-      console.log('[Push] Tapped:', response);
-    });
+    // notifResponseRef.current = addNotificationResponseReceivedListener((response) => {
+    //   console.log('[Push] Tapped:', response);
+    // });
 
-    return () => {
-      if (notifReceivedRef.current) removeNotificationSubscription(notifReceivedRef.current);
-      if (notifResponseRef.current) removeNotificationSubscription(notifResponseRef.current);
-    };
+    // return () => {
+    //   if (notifReceivedRef.current) removeNotificationSubscription(notifReceivedRef.current);
+    //   if (notifResponseRef.current) removeNotificationSubscription(notifResponseRef.current);
+    // };
   }, []);
 
   return (

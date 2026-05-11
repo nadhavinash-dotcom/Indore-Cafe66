@@ -19,7 +19,7 @@ export default function PaymentScreen({ navigation, route }) {
   const { plan, mealChoice, price } = route.params;
   const [loading, setLoading] = useState(false);
   const customer = useAuthStore((s) => s.customer);
-
+console.log( plan, mealChoice, price)
   const handlePayment = async () => {
     setLoading(true);
     try {

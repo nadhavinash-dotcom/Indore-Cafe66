@@ -62,7 +62,7 @@ export default function PlansScreen({ navigation }) {
   function handleNext() {
     const plan = PLANS.find((p) => p.id === selectedPlan);
     const finalPrice = getPrice(selectedPlan, mealChoice);
-    // console.log(finalPrice,plan,mealChoice)
+    console.log('price:',finalPrice,plan,mealChoice)
     navigation.navigate('Payment', {
       plan,
       mealChoice,
