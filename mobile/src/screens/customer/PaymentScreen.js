@@ -8,11 +8,12 @@ import api from '../../lib/api';
 import useAuthStore from '../../store/authStore';
 import {
   CFPaymentGatewayService,
-  CFEnvironment,
   CFSession,
   CFThemeBuilder,
   CFDropCheckoutPayment,
 } from 'react-native-cashfree-pg-sdk';
+
+import { CFEnvironment } from 'cashfree-pg-api-contract';
 
 export default function PaymentScreen({ navigation, route }) {
   const { plan, mealChoice, price } = route.params;
@@ -28,7 +29,7 @@ export default function PaymentScreen({ navigation, route }) {
       const selectedStartDate = tomorrow.toISOString().split('T')[0];
 
       // 1. Create order on backend (sends auth token via api interceptor)
-      const { data: orderData } = await api.post('/payment/create-order', {
+      const { data } = await api.post('/payment/create-order', {
 
         orderAmount: price,
         customerName: customer?.name,
@@ -47,14 +48,14 @@ export default function PaymentScreen({ navigation, route }) {
         },
       });
 
-      console.log(orderData)
+      console.log(data)
 
-      const payment_session_id = orderData.payment_session_id;
+      const payment_session_id = data.payment_session_id;
 
       const session = new CFSession(
-        orderData.order_id,
+        data.order_id,
         payment_session_id,
-        CFEnvironment.SANDBOX
+        "SANDBOX" // Change to "PRODUCTION" for live
       );
       const theme = new CFThemeBuilder()
         .setNavigationBarBackgroundColor('#000000')
@@ -175,7 +176,7 @@ export default function PaymentScreen({ navigation, route }) {
           <Row label="Total" value={`₹${price}`} highlight />
         </Card>
 
-        <Text style={styles.note}>Payment secured by Razorpay</Text>
+        <Text style={styles.note}>Payment secured by cash free</Text>
 
         <Button
           title={`Pay ₹${price}`}
