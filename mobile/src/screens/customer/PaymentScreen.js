@@ -81,7 +81,9 @@ export default function PaymentScreen({ navigation, route }) {
   // MATCHED COUPON
   // =========================
   const matchedCoupon = useMemo(() => {
-    const normalizedCode = appliedCouponCode
+    const normalizedCode = (
+      appliedCouponCode || ''
+    )
       .trim()
       .toLowerCase();
 
@@ -107,7 +109,7 @@ export default function PaymentScreen({ navigation, route }) {
         Math.round(
           (Number(price) *
             Number(matchedCoupon.value || 0)) /
-            100
+          100
         )
       );
     }
@@ -134,10 +136,11 @@ export default function PaymentScreen({ navigation, route }) {
   // APPLY COUPON
   // =========================
   const applyCoupon = () => {
-    const normalizedCode = couponCode
+    const normalizedCode = (
+      couponCode || ''
+    )
       .trim()
       .toLowerCase();
-
     if (!normalizedCode) {
       setAppliedCouponCode('');
       setCouponError('Please enter coupon code');
@@ -185,7 +188,7 @@ export default function PaymentScreen({ navigation, route }) {
 
           couponCode: matchedCoupon
             ? matchedCoupon.code
-            : '',
+            : 'none',
 
           customerName: customer?.name,
 
@@ -309,7 +312,7 @@ export default function PaymentScreen({ navigation, route }) {
       Alert.alert(
         'Error',
         error?.message ||
-          'Could not complete payment'
+        'Could not complete payment'
       );
     } finally {
       setLoading(false);
@@ -337,7 +340,7 @@ export default function PaymentScreen({ navigation, route }) {
         Alert.alert(
           'Payment Failed',
           error?.message ||
-            'Something went wrong'
+          'Something went wrong'
         );
       },
     });
@@ -444,7 +447,7 @@ export default function PaymentScreen({ navigation, route }) {
             <Text style={styles.successText}>
               Applied {matchedCoupon.code} (
               {matchedCoupon.type ===
-              'percent'
+                'percent'
                 ? `${matchedCoupon.value}% OFF`
                 : `₹${matchedCoupon.value} OFF`}
               )
@@ -493,7 +496,7 @@ function Row({
         style={[
           styles.rowValue,
           highlight &&
-            styles.rowValueHighlight,
+          styles.rowValueHighlight,
         ]}
       >
         {value}

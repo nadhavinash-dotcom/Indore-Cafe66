@@ -15,6 +15,10 @@ export default function useRazorpay() {
         mealType,
         couponCode,
         subscriptionPlan,
+        orderAmount: subscriptionPlan?.finalAmount,
+        customerName: customer?.name || '',
+        customerPhone: customer?.phone || '',
+        customerEmail: customer?.email || '',
       });
       const orderData = orderRes.data;
 

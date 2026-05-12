@@ -133,7 +133,7 @@ export default function Payment() {
         discountAmount,
         finalAmount: payableTotal,
       },
-      customer: { name: customer?.name, phone: customer?.phone },
+      customer: { name: customer?.name, phone: customer?.phone, email: customer?.email },
       onSuccess: (data) => {
         sessionStorage.removeItem('ci_plan');
         navigate('/customer/success', {
