@@ -28,10 +28,10 @@ export default function PaymentScreen({ navigation, route }) {
 
   const [loading, setLoading] = useState(false);
 
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedCouponCode, setAppliedCouponCode] = useState('');
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCouponCode, setAppliedCouponCode] = useState("");
   const [availableCoupons, setAvailableCoupons] = useState([]);
-  const [couponError, setCouponError] = useState('');
+  const [couponError, setCouponError] = useState("");
 
   const customer = useAuthStore((s) => s.customer);
 
@@ -162,14 +162,14 @@ export default function PaymentScreen({ navigation, route }) {
     }
 
     setAppliedCouponCode(
-      String(coupon.code || '')
+      String(coupon.code || "")
     );
 
     setCouponCode(
-      String(coupon.code || '')
+      String(coupon.code || "")
     );
 
-    setCouponError('');
+    setCouponError("");
 
     Alert.alert('Success', 'Coupon Applied');
   };
@@ -196,8 +196,8 @@ export default function PaymentScreen({ navigation, route }) {
           orderAmount: payableTotal,
 
           couponCode: matchedCoupon
-            ? matchedCoupon.code
-            : 'none',
+            ? matchedCoupon?.code
+            : "",
 
           customerName: customer?.name,
 
@@ -205,7 +205,7 @@ export default function PaymentScreen({ navigation, route }) {
 
           customerEmail: customer?.email
             ? customer.email
-            : 'manikanththarine31@gmail.com',
+            : "manikanththarine31@gmail.com",
 
           planType: plan.id,
 
@@ -220,7 +220,7 @@ export default function PaymentScreen({ navigation, route }) {
 
             couponCode: matchedCoupon
               ? matchedCoupon.code
-              : '',
+              :"",
 
             mealStartDates: {
               lunch:
