@@ -8,12 +8,12 @@ import api from '../../lib/api';
 import useAuthStore from '../../store/authStore';
 import {
   CFPaymentGatewayService,
-  CFSession,
   CFThemeBuilder,
   CFDropCheckoutPayment,
 } from 'react-native-cashfree-pg-sdk';
 
-import { CFEnvironment } from 'cashfree-pg-api-contract';
+import { CFEnvironment,
+  CFSession } from 'cashfree-pg-api-contract';
 
 export default function PaymentScreen({ navigation, route }) {
   const { plan, mealChoice, price } = route.params;

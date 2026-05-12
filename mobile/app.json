@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "CafeIndoor",
-    "slug": "cafe-indoor",
+    "slug": "cafeinttarine",
     "version": "1.0.0",
     "orientation": "portrait",
     "platforms": [
@@ -10,7 +10,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "9ae7f93a-643d-454e-accc-73ed3a163e2c"
+        "projectId": "8e511abd-9a4d-4d67-b996-d99040efa5fd"
       }
     },
     "icon": "./assets/icon.png",
@@ -46,6 +46,7 @@
       ],
       "expo-font"
     ],
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "owner": "tarinemanikanths-organization"
   }
 }
