@@ -111,16 +111,16 @@ export default function PaymentScreen({ navigation, route }) {
         Number(price),
         Math.round(
           (Number(price) *
-            Number(matchedCoupon.value || 0)) /
+            Number(matchedCoupon?.value || 0)) /
           100
         )
       );
     }
 
-    if (matchedCoupon.type === 'flat') {
+    if (matchedCoupon?.type === 'flat') {
       return Math.min(
         Number(price),
-        Number(matchedCoupon.value || 0)
+        Number(matchedCoupon?.value || 0)
       );
     }
 
@@ -162,11 +162,11 @@ export default function PaymentScreen({ navigation, route }) {
     }
 
     setAppliedCouponCode(
-      String(coupon.code || "")
+      String(coupon?.code || "")
     );
 
     setCouponCode(
-      String(coupon.code || "")
+      String(coupon?.code || "")
     );
 
     setCouponError("");
@@ -193,7 +193,7 @@ export default function PaymentScreen({ navigation, route }) {
       const { data } = await api.post(
         '/payment/create-order',
         {
-          orderAmount: payableTotal,
+          orderAmount: String(payableTotal),
 
           couponCode: matchedCoupon
             ? matchedCoupon?.code
@@ -204,10 +204,10 @@ export default function PaymentScreen({ navigation, route }) {
           customerPhone: customer?.phone,
 
           customerEmail: customer?.email
-            ? customer.email
+            ? customer?.email
             : "manikanththarine31@gmail.com",
 
-          planType: plan.id,
+          planType: plan?.id,
 
           mealType: mealChoice,
 
@@ -219,7 +219,7 @@ export default function PaymentScreen({ navigation, route }) {
             finalAmount: payableTotal,
 
             couponCode: matchedCoupon
-              ? matchedCoupon.code
+              ? matchedCoupon?.code
               : "",
 
             mealStartDates: {
@@ -240,11 +240,11 @@ export default function PaymentScreen({ navigation, route }) {
       console.log('ORDER RESPONSE =>', data);
 
       const payment_session_id =
-        data.payment_session_id;
+        data?.payment_session_id;
 
       const session = new CFSession(
         payment_session_id,
-        data.order_id,
+        data?.order_id,
         "SANDBOX"
       );
 

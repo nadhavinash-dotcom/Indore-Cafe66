@@ -42,13 +42,13 @@ export default function AdminLoginScreen({ navigation }) {
           <Text style={styles.icon}>⚙️</Text>
         </View>
         <Text style={styles.title}>Admin Portal</Text>
-        <Text style={styles.subtitle}>Cafe Indoori Management</Text>
+        <Text style={styles.subtitle}>Cafe Indori Management</Text>
 
         <Input label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="admin@cafeindoori.com" />
         <Input label="Password" value={password} onChangeText={setPassword} secureTextEntry placeholder="••••••••" error={error} />
 
         <Button title="Login" onPress={handleLogin} loading={loading} />
-        <Text style={styles.devHint}>Dev: admin@cafeindoori.com / Admin@123</Text>
+        <Text style={styles.devHint}>Dev: admin@cafeindori.com / Admin@123</Text>
       </ScrollView>
     </SafeAreaView>
   );

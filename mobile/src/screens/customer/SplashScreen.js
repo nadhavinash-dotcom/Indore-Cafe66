@@ -19,8 +19,8 @@ export default function SplashScreen({ navigation }) {
       <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
         <View style={styles.logoContainer}>
           <Text style={styles.logoEmoji}>🍱</Text>
-          <Text style={styles.brand}>Cafe Indoor</Text>
-          <Text style={styles.tagline}>Premium Food Delivery · Indore</Text>
+          <Text style={styles.brand}>Cafe Indori</Text>
+          <Text style={styles.tagline}>Premium Food Delivery · Indori</Text>
         </View>
 
         <View style={styles.actions}>
