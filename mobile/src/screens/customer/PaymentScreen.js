@@ -81,21 +81,24 @@ export default function PaymentScreen({ navigation, route }) {
   // MATCHED COUPON
   // =========================
   const matchedCoupon = useMemo(() => {
-    const normalizedCode = (
-      appliedCouponCode || ''
-    )
-      .trim()
-      .toLowerCase();
+  const normalizedCode = String(
+    appliedCouponCode || ''
+  )
+    .trim()
+    .toLowerCase();
 
-    if (!normalizedCode) return null;
+  if (!normalizedCode) return null;
 
-    return (
-      availableCoupons.find(
-        (coupon) =>
-          coupon.code?.toLowerCase() === normalizedCode
-      ) || null
-    );
-  }, [appliedCouponCode, availableCoupons]);
+  return (
+    availableCoupons.find((coupon) => {
+      const code = String(
+        coupon?.code || ''
+      ).toLowerCase();
+
+      return code === normalizedCode;
+    }) || null
+  );
+}, [appliedCouponCode, availableCoupons]);
 
   // =========================
   // DISCOUNT
@@ -136,7 +139,7 @@ export default function PaymentScreen({ navigation, route }) {
   // APPLY COUPON
   // =========================
   const applyCoupon = () => {
-    const normalizedCode = (
+    const normalizedCode = String(
       couponCode || ''
     )
       .trim()
@@ -149,7 +152,7 @@ export default function PaymentScreen({ navigation, route }) {
 
     const coupon = availableCoupons.find(
       (item) =>
-        item.code?.toLowerCase() === normalizedCode
+        item?.code?.toLowerCase() === normalizedCode
     );
 
     if (!coupon) {
@@ -158,8 +161,14 @@ export default function PaymentScreen({ navigation, route }) {
       return;
     }
 
-    setAppliedCouponCode(coupon.code);
-    setCouponCode(coupon.code);
+    setAppliedCouponCode(
+      String(coupon.code || '')
+    );
+
+    setCouponCode(
+      String(coupon.code || '')
+    );
+
     setCouponError('');
 
     Alert.alert('Success', 'Coupon Applied');
