@@ -81,24 +81,24 @@ export default function PaymentScreen({ navigation, route }) {
   // MATCHED COUPON
   // =========================
   const matchedCoupon = useMemo(() => {
-  const normalizedCode = String(
-    appliedCouponCode || ''
-  )
-    .trim()
-    .toLowerCase();
+    const normalizedCode = String(
+      appliedCouponCode || ""
+    )
+      .trim()
+      .toLowerCase();
 
-  if (!normalizedCode) return null;
+    if (!normalizedCode) return null;
 
-  return (
-    availableCoupons.find((coupon) => {
-      const code = String(
-        coupon?.code || ''
-      ).toLowerCase();
+    return (
+      availableCoupons.find((coupon) => {
+        const code = String(
+          coupon?.code || ""
+        ).toLowerCase();
 
-      return code === normalizedCode;
-    }) || null
-  );
-}, [appliedCouponCode, availableCoupons]);
+        return code === normalizedCode;
+      }) || null
+    );
+  }, [appliedCouponCode, availableCoupons]);
 
   // =========================
   // DISCOUNT
@@ -140,12 +140,12 @@ export default function PaymentScreen({ navigation, route }) {
   // =========================
   const applyCoupon = () => {
     const normalizedCode = String(
-      couponCode || ''
+      couponCode || ""
     )
       .trim()
       .toLowerCase();
     if (!normalizedCode) {
-      setAppliedCouponCode('');
+      setAppliedCouponCode("");
       setCouponError('Please enter coupon code');
       return;
     }
@@ -156,7 +156,7 @@ export default function PaymentScreen({ navigation, route }) {
     );
 
     if (!coupon) {
-      setAppliedCouponCode('');
+      setAppliedCouponCode("");
       setCouponError('Invalid coupon code');
       return;
     }
@@ -220,7 +220,7 @@ export default function PaymentScreen({ navigation, route }) {
 
             couponCode: matchedCoupon
               ? matchedCoupon.code
-              :"",
+              : "",
 
             mealStartDates: {
               lunch:
@@ -243,9 +243,9 @@ export default function PaymentScreen({ navigation, route }) {
         data.payment_session_id;
 
       const session = new CFSession(
-        data.order_id,
         payment_session_id,
-        'SANDBOX'
+        data.order_id,
+        "SANDBOX"
       );
 
       const theme = new CFThemeBuilder()
