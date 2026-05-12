@@ -2,7 +2,7 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL ='https://cafe-indoor-backend.vercel.app';
+const BASE_URL ='https://cafe-indoor-backend-git-main-tarine-manikanths-projects.vercel.app';
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api`,

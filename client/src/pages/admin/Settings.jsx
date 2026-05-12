@@ -19,6 +19,7 @@ export default function Settings() {
       const res = await api.get('/admin/settings');
       setSettings(res.data.settings);
       setForm(res.data.settings);
+      console.log(form)
     } finally {
       setLoading(false);
     }

@@ -181,7 +181,7 @@ export default function ProfileScreen({ navigation }) {
               <Input
                 label="Name"
                 value={editForm.name}
-                onChangeText={(v) => setEditaddress_line1Form((f) => ({ ...f, name: v }))}
+                onChangeText={(v) => setEditForm((f) => ({ ...f, name: v }))}
                 placeholder="Your name"
               />
 

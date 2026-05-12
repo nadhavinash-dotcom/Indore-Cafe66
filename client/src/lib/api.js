@@ -1,8 +1,10 @@
 import axios from 'axios';
+const BASE_URL ='https://cafe-indoor-backend-git-main-tarine-manikanths-projects.vercel.app';
 
 const api = axios.create({
-  baseURL: 'http://localhost:3001/api',
+  baseURL: `${BASE_URL}/api`,
   timeout: 15000,
+  withCredentials: true
 });
 
 api.interceptors.request.use((config) => {
