@@ -122,7 +122,7 @@ router.get('/checkout-config', asyncHandler(async (_req, res) => {
 }));
 
 
-router.post('/create-order',
+router.post('/create-order',verifyToken('customer'),
   body('planType').isIn(['monthly', 'trial']),
   body('mealType').isIn(['lunch', 'dinner', 'both']),
   body('couponCode').optional({ values: 'false' }).isString().isLength({ max: 50 }),
@@ -133,7 +133,7 @@ router.post('/create-order',
     if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION_ERROR' });
 
     // const { planType, mealType, couponCode, subscriptionPlan = {} } = req.body;
-
+console.log(req.user.id)
 
     try {
 
@@ -142,20 +142,21 @@ router.post('/create-order',
         customerName,
         customerPhone,
         customerEmail,
+        customer_id,
         planType, mealType, couponCode, subscriptionPlan = {}
       } = req.body;
 
       const orderId = `ORDER_${Date.now()}`;
       const request = {
         order_id: orderId,
-        order_amount: Number(orderAmount),
+        order_amount: subscriptionPlan.finalAmount,
         order_currency: "INR",
 
         customer_details: {
-          customer_id: "69fae3a58c2feafcd74bc335",
+          customer_id: customer_id,
           customer_name: customerName,
           customer_email: customerEmail,
-          customer_phone: customerPhone,
+          customer_phone: req.user.phone,
         },
 
         order_meta: {
@@ -167,7 +168,7 @@ router.post('/create-order',
       console.log("REQUEST =>", request);
 
       const response = await Cashfree.PGCreateOrder(
-        "2022-09-01",
+        "2026-05-13",
         request
       );
 

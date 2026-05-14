@@ -113,7 +113,6 @@ router.get('/revenue/summary', verifyToken('admin'), asyncHandler(async (req, re
 }));
 
 router.get('/settings',asyncHandler(async (_req, res) => {
-  console.log('sdjsdsj')
   const settings = await Setting.find().sort({ key: 1 });
   const obj = {};
   settings.forEach((setting) => { obj[setting.key] = setting.value; });

@@ -14,14 +14,15 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import api from '../../lib/api';
 import useAuthStore from '../../store/authStore';
+import RazorpayCheckout from 'react-native-razorpay';
 
-import {
-  CFPaymentGatewayService,
-  CFThemeBuilder,
-  CFDropCheckoutPayment,
-} from 'react-native-cashfree-pg-sdk';
+// import {
+//   CFPaymentGatewayService,
+//   CFThemeBuilder,
+//   CFDropCheckoutPayment,
+// } from 'react-native-cashfree-pg-sdk';
 
-import { CFSession } from 'cashfree-pg-api-contract';
+// import { CFSession } from 'cashfree-pg-api-contract';
 
 export default function PaymentScreen({ navigation, route }) {
   const { plan, mealChoice, price } = route.params;
@@ -81,19 +82,15 @@ export default function PaymentScreen({ navigation, route }) {
   // MATCHED COUPON
   // =========================
   const matchedCoupon = useMemo(() => {
-    const normalizedCode = String(
-      appliedCouponCode || ""
-    )
-      .trim()
-      .toLowerCase();
+    const normalizedCode = (appliedCouponCode || "").toString().trim().toLowerCase();
 
     if (!normalizedCode) return null;
 
     return (
       availableCoupons.find((coupon) => {
-        const code = String(
+        const code = (
           coupon?.code || ""
-        ).toLowerCase();
+        ).toString().toLowerCase();
 
         return code === normalizedCode;
       }) || null
@@ -139,11 +136,8 @@ export default function PaymentScreen({ navigation, route }) {
   // APPLY COUPON
   // =========================
   const applyCoupon = () => {
-    const normalizedCode = String(
-      couponCode || ""
-    )
-      .trim()
-      .toLowerCase();
+    console.log("Current couponCode type:", typeof couponCode, "Value:", couponCode);
+    const normalizedCode = (couponCode || "").toString().trim().toLowerCase();
     if (!normalizedCode) {
       setAppliedCouponCode("");
       setCouponError('Please enter coupon code');
@@ -151,8 +145,7 @@ export default function PaymentScreen({ navigation, route }) {
     }
 
     const coupon = availableCoupons.find(
-      (item) =>
-        item?.code?.toLowerCase() === normalizedCode
+      (item) => item?.code?.toString().toLowerCase() === normalizedCode
     );
 
     if (!coupon) {
@@ -177,187 +170,258 @@ export default function PaymentScreen({ navigation, route }) {
   // =========================
   // HANDLE PAYMENT
   // =========================
-  const handlePayment = async () => {
-    setLoading(true);
+  // const handlePayment = async () => {
+  //   setLoading(true);
 
+  //   try {
+  //     // Tomorrow date
+  //     const tomorrow = new Date();
+  //     tomorrow.setDate(tomorrow.getDate() + 1);
+
+  //     const selectedStartDate = tomorrow
+  //       .toISOString()
+  //       .split('T')[0];
+
+  //     // CREATE ORDER
+  //     const { data } = await api.post(
+  //       '/payment/create-order',
+  //       {
+  //         orderAmount: payableTotal,
+
+  //         couponCode: matchedCoupon
+  //           ? matchedCoupon?.code
+  //           : "",
+  //         customer_id: customer?.id,
+  //         customerName: customer?.name,
+
+  //         customerPhone: customer?.phone,
+
+  //         customerEmail: customer?.email
+  //           ? customer?.email
+  //           : "manikanththarine31@gmail.com",
+
+  //         planType: plan?.id,
+
+  //         mealType: mealChoice,
+
+  //         subscriptionPlan: {
+  //           selectedStartDate,
+
+  //           discountAmount,
+
+  //           finalAmount: payableTotal,
+
+  //           couponCode: matchedCoupon
+  //             ? matchedCoupon?.code
+  //             : "",
+
+  //           mealStartDates: {
+  //             lunch:
+  //               mealChoice !== 'dinner'
+  //                 ? selectedStartDate
+  //                 : null,
+
+  //             dinner:
+  //               mealChoice !== 'lunch'
+  //                 ? selectedStartDate
+  //                 : null,
+  //           },
+  //         },
+  //       }
+  //     );
+
+  //     console.log('ORDER RESPONSE =>', data);
+
+  //     const payment_session_id =
+  //       data?.payment_session_id;
+
+  //     const session = new CFSession(
+  //       payment_session_id,
+  //       data?.order_id,
+  //       'SANDBOX'
+  //     );
+
+  //     const theme = new CFThemeBuilder()
+  //       .setNavigationBarBackgroundColor('#000000')
+  //       .setNavigationBarTextColor('#FFFFFF')
+  //       .setButtonBackgroundColor('#000000')
+  //       .setButtonTextColor('#FFFFFF')
+  //       .build();
+
+  //     const dropPayment =
+  //       new CFDropCheckoutPayment(
+  //         session,
+  //         null,
+  //         theme
+  //       );
+
+  //     CFPaymentGatewayService.doPayment(
+  //       dropPayment
+  //     );
+
+
+
+  //     // // Mock mode: skip Razorpay UI, call verify directly
+  //     // if (orderData.isMock) {
+  //     //   const { data: verifyData } = await api.post('/payment/verify', {
+  //     //     razorpay_order_id: orderData.razorpayOrderId,
+  //     //     razorpay_payment_id: `mock_pay_${Date.now()}`,
+  //     //     razorpay_signature: '',
+  //     //   });
+  //     //   if (verifyData.success) {
+  //     //     Alert.alert('Success', 'Subscription Confirmed!', [
+  //     //       { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
+  //     //     ]);
+  //     //   }
+  //     //   return;
+  //     // }
+
+  //     // // 2. Open Razorpay Checkout
+  //     // const options = {
+  //     //   description: `Subscription for ${plan.name}`,
+  //     //   image: 'https://i.imgur.com/3g7nmJC.png',
+  //     //   currency: orderData.currency,
+  //     //   key: orderData.keyId,
+  //     //   amount: orderData.amount,
+  //     //   name: 'Cafe Indore',
+  //     //   order_id: orderData.razorpayOrderId,
+  //     //   prefill: {
+  //     //     email: customer?.email || '',
+  //     //     contact: customer?.phone || '',
+  //     //     name: customer?.name || '',
+  //     //   },
+  //     //   theme: { color: COLORS.emerald },
+  //     // };
+
+  //     // const payData = await RazorpayCheckout.open(options);
+
+  //     // // 3. Verify payment on backend (sends auth token via api interceptor)
+  //     // const { data: verifyData } = await api.post('/payment/verify', {
+  //     //   razorpay_order_id: payData.razorpay_order_id,
+  //     //   razorpay_payment_id: payData.razorpay_payment_id,
+  //     //   razorpay_signature: payData.razorpay_signature,
+  //     // });
+
+  //     // if (verifyData.success) {
+  //     //   Alert.alert('Success', 'Subscription Confirmed!', [
+  //     //     { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
+  //     //   ]);
+  //     // }
+
+  //   } catch (error) {
+  //     console.error(error);
+
+  //     // Alert.alert(
+  //     //   'Error',
+  //     //   error?.message ||
+  //     //   'Could not complete payment'
+  //     // );
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // =========================
+  // CASHFREE CALLBACKS
+  // =========================
+
+  // razorpay
+  const createOrder = async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const selectedStartDate = tomorrow
+      .toISOString()
+      .split('T')[0];
     try {
-      // Tomorrow date
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const response = await api.post('/payment/create-order', {
+        amount: payableTotal,
+        orderAmount: payableTotal,
+        customerName: customer?.name,
+        customerPhone: customer?.phone,
+        customerEmail: customer?.email,
+        customer_id: customer?.id,
+        planType: plan?.id, mealType: mealChoice, couponCode: matchedCoupon ? matchedCoupon?.code : "",
+        subscriptionPlan: {
+          selectedStartDate,
 
-      const selectedStartDate = tomorrow
-        .toISOString()
-        .split('T')[0];
+          discountAmount,
 
-      // CREATE ORDER
-      const { data } = await api.post(
-        '/payment/create-order',
-        {
-          orderAmount: String(payableTotal),
+          finalAmount: payableTotal,
 
           couponCode: matchedCoupon
             ? matchedCoupon?.code
             : "",
 
-          customerName: customer?.name,
+          mealStartDates: {
+            lunch:
+              mealChoice !== 'dinner'
+                ? selectedStartDate
+                : null,
 
-          customerPhone: customer?.phone,
-
-          customerEmail: customer?.email
-            ? customer?.email
-            : "manikanththarine31@gmail.com",
-
-          planType: plan?.id,
-
-          mealType: mealChoice,
-
-          subscriptionPlan: {
-            selectedStartDate,
-
-            discountAmount,
-
-            finalAmount: payableTotal,
-
-            couponCode: matchedCoupon
-              ? matchedCoupon?.code
-              : "",
-
-            mealStartDates: {
-              lunch:
-                mealChoice !== 'dinner'
-                  ? selectedStartDate
-                  : null,
-
-              dinner:
-                mealChoice !== 'lunch'
-                  ? selectedStartDate
-                  : null,
-            },
+            dinner:
+              mealChoice !== 'lunch'
+                ? selectedStartDate
+                : null,
           },
-        }
-      );
-
-      console.log('ORDER RESPONSE =>', data);
-
-      const payment_session_id =
-        data?.payment_session_id;
-
-      const session = new CFSession(
-        payment_session_id,
-        data?.order_id,
-        "SANDBOX"
-      );
-
-      const theme = new CFThemeBuilder()
-        .setNavigationBarBackgroundColor('#000000')
-        .setNavigationBarTextColor('#FFFFFF')
-        .setButtonBackgroundColor('#000000')
-        .setButtonTextColor('#FFFFFF')
-        .build();
-
-      const dropPayment =
-        new CFDropCheckoutPayment(
-          session,
-          null,
-          theme
-        );
-
-      CFPaymentGatewayService.doPayment(
-        dropPayment
-      );
-
-
-
-      // // Mock mode: skip Razorpay UI, call verify directly
-      // if (orderData.isMock) {
-      //   const { data: verifyData } = await api.post('/payment/verify', {
-      //     razorpay_order_id: orderData.razorpayOrderId,
-      //     razorpay_payment_id: `mock_pay_${Date.now()}`,
-      //     razorpay_signature: '',
-      //   });
-      //   if (verifyData.success) {
-      //     Alert.alert('Success', 'Subscription Confirmed!', [
-      //       { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
-      //     ]);
-      //   }
-      //   return;
-      // }
-
-      // // 2. Open Razorpay Checkout
-      // const options = {
-      //   description: `Subscription for ${plan.name}`,
-      //   image: 'https://i.imgur.com/3g7nmJC.png',
-      //   currency: orderData.currency,
-      //   key: orderData.keyId,
-      //   amount: orderData.amount,
-      //   name: 'Cafe Indore',
-      //   order_id: orderData.razorpayOrderId,
-      //   prefill: {
-      //     email: customer?.email || '',
-      //     contact: customer?.phone || '',
-      //     name: customer?.name || '',
-      //   },
-      //   theme: { color: COLORS.emerald },
-      // };
-
-      // const payData = await RazorpayCheckout.open(options);
-
-      // // 3. Verify payment on backend (sends auth token via api interceptor)
-      // const { data: verifyData } = await api.post('/payment/verify', {
-      //   razorpay_order_id: payData.razorpay_order_id,
-      //   razorpay_payment_id: payData.razorpay_payment_id,
-      //   razorpay_signature: payData.razorpay_signature,
-      // });
-
-      // if (verifyData.success) {
-      //   Alert.alert('Success', 'Subscription Confirmed!', [
-      //     { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
-      //   ]);
-      // }
-
+        },
+      });
+      return response.data.order_id;
     } catch (error) {
-      console.error(error);
-
-      Alert.alert(
-        'Error',
-        error?.message ||
-        'Could not complete payment'
-      );
-    } finally {
-      setLoading(false);
+      console.error('Order creation failed:', error);
+      Alert.alert('Error', 'Failed to create order. Please try again.');
+      return null;
     }
   };
 
-  // =========================
-  // CASHFREE CALLBACKS
-  // =========================
-  useEffect(() => {
-    CFPaymentGatewayService.setCallback({
-      onVerify(orderID) {
-        console.log('VERIFY:', orderID);
-
-        navigation.replace('Success');
+  // Step 4b — Open Razorpay Checkout
+  const handlePayment = async () => {
+    const order_id = await createOrder();
+    const options = {
+      description: 'Order Payment',
+      image: '',
+      currency: 'INR',
+      key: 'rzp_test_Skp0GkVhJpdvZI',   // ⚠️ Key ID only, never Key Secret
+      amount: payableTotal,                // in paise
+      name: customer?.name,
+      order_id: order_id,             // from backend
+      prefill: {
+        email: customer?.email || '',
+        contact: customer?.phone || '',
+        name: customer?.name || '',
       },
-
-      onError(error, orderID) {
-        console.log(
-          'ERROR:',
-          error,
-          orderID
-        );
-
-        Alert.alert(
-          'Payment Failed',
-          error?.message ||
-          'Something went wrong'
-        );
-      },
-    });
-
-    return () => {
-      CFPaymentGatewayService.removeCallback();
+      theme: { color: '#3399cc' },
     };
-  }, []);
+
+    RazorpayCheckout.open(options)
+      .then((data) => {
+        // Payment success → verify on backend
+        verifyPayment(data);
+      })
+      .catch((error) => {
+        Alert.alert('Payment Failed', error.description);
+      });
+  };
+
+  // Step 4c — Verify Payment via Backend
+  const verifyPayment = async (paymentData) => {
+    try {
+      const response = await api.post('/payment/verify-payment', paymentData);
+
+      if (response.data.success) {
+        Alert.alert('Success', 'Subscription Confirmed!', [
+          { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
+        ]
+        )
+      } else {
+        Alert.alert('❌ Failed', 'Payment verification failed!');
+      }
+
+    } catch (error) {
+      console.error('Verification failed:', error);
+      Alert.alert('Error', 'Something went wrong. Please contact support.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
