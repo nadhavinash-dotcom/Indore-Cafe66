@@ -335,7 +335,6 @@ export default function PaymentScreen({ navigation, route }) {
       .split('T')[0];
     try {
       const response = await api.post('/payment/create-order', {
-        amount: payableTotal,
         orderAmount: payableTotal,
         customerName: customer?.name,
         customerPhone: customer?.phone,
@@ -366,7 +365,7 @@ export default function PaymentScreen({ navigation, route }) {
           },
         },
       });
-      return response.data.order_id;
+      return response.data;
     } catch (error) {
       console.error('Order creation failed:', error);
       Alert.alert('Error', 'Failed to create order. Please try again.');
@@ -376,17 +375,17 @@ export default function PaymentScreen({ navigation, route }) {
 
   // Step 4b — Open Razorpay Checkout
   const handlePayment = async () => {
-    const order_id = await createOrder();
+    const order = await createOrder();
     const options = {
       description: 'Order Payment',
       image: '',
-      currency: 'INR',
-      key: 'rzp_test_Skp0GkVhJpdvZI',   // ⚠️ Key ID only, never Key Secret
-      amount: payableTotal,                // in paise
+      currency: order.currency,
+      key: order.keyId,   // ⚠️ Key ID only, never Key Secret
+      amount: Number(order.amount)*100,                // in paise
       name: customer?.name,
-      order_id: order_id,             // from backend
+      order_id: order.order_id,             // from backend
       prefill: {
-        email: customer?.email || '',
+        email: customer?.email || 'manikanththarine31@gmail.com',
         contact: customer?.phone || '',
         name: customer?.name || '',
       },
@@ -406,7 +405,11 @@ export default function PaymentScreen({ navigation, route }) {
   // Step 4c — Verify Payment via Backend
   const verifyPayment = async (paymentData) => {
     try {
-      const response = await api.post('/payment/verify-payment', paymentData);
+      const response = await api.post('/payment/verify-payment', {
+        razorpay_order_id: paymentData.razorpay_order_id,
+        razorpay_payment_id: paymentData.razorpay_payment_id,
+        razorpay_signature: paymentData.razorpay_signature
+      });
 
       if (response.data.success) {
         Alert.alert('Success', 'Subscription Confirmed!', [

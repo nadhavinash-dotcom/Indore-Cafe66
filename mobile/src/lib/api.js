@@ -3,7 +3,6 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL ='https://cafe-indoor-backend.vercel.app';
-// const BASE_URL ='https://snowsuit-spooky-landowner.ngrok-free.dev';
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api`,
