@@ -4,47 +4,55 @@
     "slug": "cafe-indori",
     "version": "1.0.0",
     "orientation": "portrait",
-    "platforms": [
-      "android",
-      "ios"
-    ],
-    "extra": {
-      "projectId": "daf6eed0-9f22-4dac-91c6-5cd46c2fc36d"
-    }
-  },
-  "icon": "./assets/icon.png",
-  "userInterfaceStyle": "dark",
-  "splash": {
-    "backgroundColor": "#0D0D0D"
-  },
-  "assetBundlePatterns": [
-    "**/*"
-  ],
-  "ios": {
-    "supportsTablet": false,
-    "bundleIdentifier": "com.manikanthtarine.cafeindoor"
-  },
-  "android": {
-    "adaptiveIcon": {
+    "platforms": ["android", "ios"],
+
+    "icon": "./assets/icon.png",
+
+    "userInterfaceStyle": "dark",
+
+    "splash": {
       "backgroundColor": "#0D0D0D"
     },
-    "package": "com.manikanthtarine.cafeindoor",
-    "permissions": [
-      "RECEIVE_BOOT_COMPLETED",
-      "VIBRATE"
-    ]
-  },
-  "plugins": [
-    [
-      "expo-notifications",
-      {
-        "icon": "./assets/notification-icon.png",
-        "color": "#C9922A",
-        "sounds": []
+
+    "assetBundlePatterns": ["**/*"],
+
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.manikanthtarine.cafeindoor"
+    },
+
+    "android": {
+      "package": "com.manikanthtarine.cafeindoor",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#0D0D0D"
       }
+    },
+
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#C9922A",
+          "sounds": []
+        }
+      ],
+      "expo-font"
     ],
-    "expo-font"
-  ],
-  "newArchEnabled": true,
-  "owner": "manikanthchari"
+
+    "extra": {
+      "projectId": "daf6eed0-9f22-4dac-91c6-5cd46c2fc36d",
+      "eas": {
+        "projectId": "daf6eed0-9f22-4dac-91c6-5cd46c2fc36d"
+      }
+    },
+
+    "newArchEnabled": true,
+
+    "owner": "manikanthchari"
+  }
 }
