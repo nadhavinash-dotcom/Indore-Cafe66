@@ -6,536 +6,343 @@ import {
   StyleSheet,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import RazorpayCheckout from 'react-native-razorpay';
 
 import { COLORS } from '../../constants/theme';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import api from '../../lib/api';
 import useAuthStore from '../../store/authStore';
-import RazorpayCheckout from 'react-native-razorpay';
-
-// import {
-//   CFPaymentGatewayService,
-//   CFThemeBuilder,
-//   CFDropCheckoutPayment,
-// } from 'react-native-cashfree-pg-sdk';
-
-// import { CFSession } from 'cashfree-pg-api-contract';
 
 export default function PaymentScreen({ navigation, route }) {
   const { plan, mealChoice, price } = route.params;
-
-  const [loading, setLoading] = useState(false);
-
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCouponCode, setAppliedCouponCode] = useState("");
-  const [availableCoupons, setAvailableCoupons] = useState([]);
-  const [couponError, setCouponError] = useState("");
-
   const customer = useAuthStore((s) => s.customer);
 
-  // =========================
-  // LOAD COUPONS
-  // =========================
+  // ─────────────────────────────────────────────
+  // State
+  // ─────────────────────────────────────────────
+  const [loading, setLoading] = useState(false);
+  const [configLoading, setConfigLoading] = useState(true);
+
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCouponCode, setAppliedCouponCode] = useState('');
+  const [couponError, setCouponError] = useState('');
+
+  // ─────────────────────────────────────────────
+  // Load checkout config (keyId + coupons)
+  // ─────────────────────────────────────────────
   useEffect(() => {
     let mounted = true;
 
-    async function loadCoupons() {
+    async function loadConfig() {
       try {
-        const res = await api.get('/admin/settings');
+        const res = await api.get('/payment/checkout-config');
+        const { keyId, coupons } = res.data;
 
-        const rawCoupons = res.data?.settings?.coupons;
+        if (!mounted) return;
 
-        if (!rawCoupons) {
-          if (mounted) setAvailableCoupons([]);
-          return;
-        }
+        if (keyId) +(keyId);
 
-        const parsedCoupons = Array.isArray(rawCoupons)
-          ? rawCoupons
-          : JSON.parse(rawCoupons);
-
-        if (mounted) {
-          setAvailableCoupons(
-            Array.isArray(parsedCoupons) ? parsedCoupons : []
-          );
-        }
+        setAvailableCoupons(
+          Array.isArray(coupons) ? coupons : []
+        );
       } catch (err) {
-        console.log('Failed to load coupons', err);
-
-        if (mounted) {
-          setAvailableCoupons([]);
-        }
+        console.error('Failed to load checkout config:', err);
+        if (mounted) setAvailableCoupons([]);
+      } finally {
+        if (mounted) setConfigLoading(false);
       }
     }
 
-    loadCoupons();
+    loadConfig();
 
     return () => {
       mounted = false;
     };
   }, []);
 
-  // =========================
-  // MATCHED COUPON
-  // =========================
+  // ─────────────────────────────────────────────
+  // Matched coupon (from appliedCouponCode)
+  // ─────────────────────────────────────────────
   const matchedCoupon = useMemo(() => {
-    const normalizedCode = (appliedCouponCode || "").toString().trim().toLowerCase();
-
-    if (!normalizedCode) return null;
+    const normalized = (appliedCouponCode || '').trim().toLowerCase();
+    if (!normalized) return null;
 
     return (
-      availableCoupons.find((coupon) => {
-        const code = (
-          coupon?.code || ""
-        ).toString().toLowerCase();
-
-        return code === normalizedCode;
-      }) || null
+      availableCoupons.find(
+        (c) => (c?.code || '').toString().toLowerCase() === normalized
+      ) || null
     );
   }, [appliedCouponCode, availableCoupons]);
 
-  // =========================
-  // DISCOUNT
-  // =========================
+  // ─────────────────────────────────────────────
+  // Discount amount
+  // ─────────────────────────────────────────────
   const discountAmount = useMemo(() => {
     if (!matchedCoupon) return 0;
 
+    const basePrice = Number(price);
+    const value = Number(matchedCoupon?.value || 0);
+
     if (matchedCoupon.type === 'percent') {
-      return Math.min(
-        Number(price),
-        Math.round(
-          (Number(price) *
-            Number(matchedCoupon?.value || 0)) /
-          100
-        )
-      );
+      return Math.min(basePrice, Math.round((basePrice * value) / 100));
     }
 
-    if (matchedCoupon?.type === 'flat') {
-      return Math.min(
-        Number(price),
-        Number(matchedCoupon?.value || 0)
-      );
+    if (matchedCoupon.type === 'flat') {
+      return Math.min(basePrice, value);
     }
 
     return 0;
   }, [matchedCoupon, price]);
 
-  // =========================
-  // FINAL PAYABLE
-  // =========================
-  const payableTotal = Math.max(
-    0,
-    Number(price) - discountAmount
-  );
+  // ─────────────────────────────────────────────
+  // Final payable amount (in ₹)
+  // ─────────────────────────────────────────────
+  const payableTotal = Math.max(0, Number(price) - discountAmount);
 
-  // =========================
-  // APPLY COUPON
-  // =========================
+  // ─────────────────────────────────────────────
+  // Apply coupon
+  // ─────────────────────────────────────────────
   const applyCoupon = () => {
-    const normalizedCode = (couponCode || "").toString().trim().toLowerCase();
-    if (!normalizedCode) {
-      setAppliedCouponCode("");
-      setCouponError('Please enter coupon code');
+    const normalized = (couponCode || '').trim().toLowerCase();
+
+    if (!normalized) {
+      setAppliedCouponCode('');
+      setCouponError('Please enter a coupon code');
       return;
     }
 
     const coupon = availableCoupons.find(
-      (item) => item?.code?.toString().toLowerCase() === normalizedCode
+      (item) => (item?.code || '').toString().toLowerCase() === normalized
     );
 
     if (!coupon) {
-      setAppliedCouponCode("");
+      setAppliedCouponCode('');
       setCouponError('Invalid coupon code');
       return;
     }
 
-    setAppliedCouponCode(
-      String(coupon?.code || "")
-    );
-
-    setCouponCode(
-      String(coupon?.code || "")
-    );
-
-    setCouponError("");
-
-    Alert.alert('Success', 'Coupon Applied');
+    setAppliedCouponCode(String(coupon.code));
+    setCouponCode(String(coupon.code));
+    setCouponError('');
+    Alert.alert('Success', 'Coupon applied successfully!');
   };
 
-  // =========================
-  // HANDLE PAYMENT
-  // =========================
-  // const handlePayment = async () => {
-  //   setLoading(true);
+  const removeCoupon = () => {
+    setAppliedCouponCode('');
+    setCouponCode('');
+    setCouponError('');
+  };
 
-  //   try {
-  //     // Tomorrow date
-  //     const tomorrow = new Date();
-  //     tomorrow.setDate(tomorrow.getDate() + 1);
-
-  //     const selectedStartDate = tomorrow
-  //       .toISOString()
-  //       .split('T')[0];
-
-  //     // CREATE ORDER
-  //     const { data } = await api.post(
-  //       '/payment/create-order',
-  //       {
-  //         orderAmount: payableTotal,
-
-  //         couponCode: matchedCoupon
-  //           ? matchedCoupon?.code
-  //           : "",
-  //         customer_id: customer?.id,
-  //         customerName: customer?.name,
-
-  //         customerPhone: customer?.phone,
-
-  //         customerEmail: customer?.email
-  //           ? customer?.email
-  //           : "manikanththarine31@gmail.com",
-
-  //         planType: plan?.id,
-
-  //         mealType: mealChoice,
-
-  //         subscriptionPlan: {
-  //           selectedStartDate,
-
-  //           discountAmount,
-
-  //           finalAmount: payableTotal,
-
-  //           couponCode: matchedCoupon
-  //             ? matchedCoupon?.code
-  //             : "",
-
-  //           mealStartDates: {
-  //             lunch:
-  //               mealChoice !== 'dinner'
-  //                 ? selectedStartDate
-  //                 : null,
-
-  //             dinner:
-  //               mealChoice !== 'lunch'
-  //                 ? selectedStartDate
-  //                 : null,
-  //           },
-  //         },
-  //       }
-  //     );
-
-  //     console.log('ORDER RESPONSE =>', data);
-
-  //     const payment_session_id =
-  //       data?.payment_session_id;
-
-  //     const session = new CFSession(
-  //       payment_session_id,
-  //       data?.order_id,
-  //       'SANDBOX'
-  //     );
-
-  //     const theme = new CFThemeBuilder()
-  //       .setNavigationBarBackgroundColor('#000000')
-  //       .setNavigationBarTextColor('#FFFFFF')
-  //       .setButtonBackgroundColor('#000000')
-  //       .setButtonTextColor('#FFFFFF')
-  //       .build();
-
-  //     const dropPayment =
-  //       new CFDropCheckoutPayment(
-  //         session,
-  //         null,
-  //         theme
-  //       );
-
-  //     CFPaymentGatewayService.doPayment(
-  //       dropPayment
-  //     );
-
-
-
-  //     // // Mock mode: skip Razorpay UI, call verify directly
-  //     // if (orderData.isMock) {
-  //     //   const { data: verifyData } = await api.post('/payment/verify', {
-  //     //     razorpay_order_id: orderData.razorpayOrderId,
-  //     //     razorpay_payment_id: `mock_pay_${Date.now()}`,
-  //     //     razorpay_signature: '',
-  //     //   });
-  //     //   if (verifyData.success) {
-  //     //     Alert.alert('Success', 'Subscription Confirmed!', [
-  //     //       { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
-  //     //     ]);
-  //     //   }
-  //     //   return;
-  //     // }
-
-  //     // // 2. Open Razorpay Checkout
-  //     // const options = {
-  //     //   description: `Subscription for ${plan.name}`,
-  //     //   image: 'https://i.imgur.com/3g7nmJC.png',
-  //     //   currency: orderData.currency,
-  //     //   key: orderData.keyId,
-  //     //   amount: orderData.amount,
-  //     //   name: 'Cafe Indore',
-  //     //   order_id: orderData.razorpayOrderId,
-  //     //   prefill: {
-  //     //     email: customer?.email || '',
-  //     //     contact: customer?.phone || '',
-  //     //     name: customer?.name || '',
-  //     //   },
-  //     //   theme: { color: COLORS.emerald },
-  //     // };
-
-  //     // const payData = await RazorpayCheckout.open(options);
-
-  //     // // 3. Verify payment on backend (sends auth token via api interceptor)
-  //     // const { data: verifyData } = await api.post('/payment/verify', {
-  //     //   razorpay_order_id: payData.razorpay_order_id,
-  //     //   razorpay_payment_id: payData.razorpay_payment_id,
-  //     //   razorpay_signature: payData.razorpay_signature,
-  //     // });
-
-  //     // if (verifyData.success) {
-  //     //   Alert.alert('Success', 'Subscription Confirmed!', [
-  //     //     { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
-  //     //   ]);
-  //     // }
-
-  //   } catch (error) {
-  //     console.error(error);
-
-  //     // Alert.alert(
-  //     //   'Error',
-  //     //   error?.message ||
-  //     //   'Could not complete payment'
-  //     // );
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  // =========================
-  // CASHFREE CALLBACKS
-  // =========================
-
-  // razorpay
-  const createOrder = async () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const selectedStartDate = tomorrow
-      .toISOString()
-      .split('T')[0];
-    try {
-      const response = await api.post('/payment/create-order', {
-        amount: payableTotal,
-        orderAmount: payableTotal,
-        customerName: customer?.name,
-        customerPhone: customer?.phone,
-        customerEmail: customer?.email,
-        customer_id: customer?.id,
-        planType: plan?.id, mealType: mealChoice, couponCode: matchedCoupon ? matchedCoupon?.code : "",
-        subscriptionPlan: {
-          selectedStartDate,
-
-          discountAmount,
-
-          finalAmount: payableTotal,
-
-          couponCode: matchedCoupon
-            ? matchedCoupon?.code
-            : "",
-
-          mealStartDates: {
-            lunch:
-              mealChoice !== 'dinner'
-                ? selectedStartDate
-                : null,
-
-            dinner:
-              mealChoice !== 'lunch'
-                ? selectedStartDate
-                : null,
-          },
+  // ─────────────────────────────────────────────
+  // Step 1 — Create order on backend
+  // ─────────────────────────────────────────────
+  const createOrder = async (selectedStartDate) => {
+    const response = await api.post('/payment/create-order', {
+      orderAmount: payableTotal,          // ₹ — backend multiplies ×100
+      planType: plan?.id,
+      mealType: mealChoice,
+      couponCode: matchedCoupon?.code || '',
+      subscriptionPlan: {
+        selectedStartDate,
+        mealStartDates: {
+          lunch: mealChoice !== 'dinner' ? selectedStartDate : null,
+          dinner: mealChoice !== 'lunch' ? selectedStartDate : null,
         },
-      });
-      return response.data.order_id;
-    } catch (error) {
-      console.error('Order creation failed:', error);
-      Alert.alert('Error', 'Failed to create order. Please try again.');
-      return null;
-    }
-  };
-
-  // Step 4b — Open Razorpay Checkout
-  const handlePayment = async () => {
-    const order_id = await createOrder();
-    const options = {
-      description: 'Order Payment',
-      image: '',
-      currency: 'INR',
-      key: 'rzp_test_Skp0GkVhJpdvZI',   // ⚠️ Key ID only, never Key Secret
-      amount: payableTotal,                // in paise
-      name: customer?.name,
-      order_id: order_id,             // from backend
-      prefill: {
-        email: customer?.email || '',
-        contact: customer?.phone || '',
-        name: customer?.name || '',
       },
-      theme: { color: '#3399cc' },
-    };
+    });
 
-    RazorpayCheckout.open(options)
-      .then((data) => {
-        // Payment success → verify on backend
-        verifyPayment(data);
-      })
-      .catch((error) => {
-        Alert.alert('Payment Failed', error.description);
-      });
+    return response.data; // { order_id, amount (paise), currency, keyId }
   };
 
-  // Step 4c — Verify Payment via Backend
+  // ─────────────────────────────────────────────
+  // Step 2 — Verify payment on backend
+  // ─────────────────────────────────────────────
   const verifyPayment = async (paymentData) => {
-    try {
-      const response = await api.post('/payment/verify-payment', paymentData);
+    const response = await api.post('/payment/verify-payment', {
+      razorpay_order_id: paymentData.razorpay_order_id,
+      razorpay_payment_id: paymentData.razorpay_payment_id,
+      razorpay_signature: paymentData.razorpay_signature,
+    });
 
-      if (response.data.success) {
-        Alert.alert('Success', 'Subscription Confirmed!', [
-          { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
-        ]
-        )
+    return response.data; // { success, subscription }
+  };
+
+  // ─────────────────────────────────────────────
+  // Main payment handler
+  // ─────────────────────────────────────────────
+  const handlePayment = async () => {
+    if (loading) return;
+
+    setLoading(true);
+
+    try {
+      // Use tomorrow as the start date
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const selectedStartDate = tomorrow.toISOString().split('T')[0];
+
+      // 1. Create order
+      const orderData = await createOrder(selectedStartDate);
+
+      if (!orderData?.order_id) {
+        Alert.alert('Error', 'Failed to create order. Please try again.');
+        return;
+      }
+
+      // 2. Open Razorpay checkout
+      const options = {
+        description: `${plan?.name} — ${mealChoice} subscription`,
+        currency: orderData.currency || 'INR',
+        key: orderData.keyId,
+        amount: orderData.amount,          // already in paise from backend
+        name: 'Cafe Indore',
+        order_id: orderData.order_id,
+        prefill: {
+          contact: customer?.phone ? String(customer.phone) : '',
+          name: customer?.name || '',
+        },
+        theme: { color: COLORS.gold || '#3399cc' },
+      };
+
+      const paymentData = await RazorpayCheckout.open(options);
+
+      // 3. Verify with backend
+      const result = await verifyPayment(paymentData);
+
+      if (result?.success) {
+        Alert.alert('🎉 Success', 'Your subscription is confirmed!', [
+          {
+            text: 'Go to Dashboard',
+            onPress: () => navigation.navigate('Dashboard'),
+          },
+        ]);
       } else {
-        Alert.alert('❌ Failed', 'Payment verification failed!');
+        Alert.alert('Failed', 'Payment verification failed. Please contact support.');
       }
 
     } catch (error) {
-      console.error('Verification failed:', error);
-      Alert.alert('Error', 'Something went wrong. Please contact support.');
+      // Razorpay SDK throws on cancel/failure
+      if (error?.code === 0) {
+        // User dismissed the payment sheet — no alert needed
+        return;
+      }
+
+      const message =
+        error?.response?.data?.message ||
+        error?.description ||
+        error?.message ||
+        'Something went wrong. Please try again.';
+
+      Alert.alert('Payment Error', message);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ─────────────────────────────────────────────
+  // Loading config state
+  // ─────────────────────────────────────────────
+  if (configLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={COLORS.gold || '#fff'} />
+          <Text style={styles.loadingText}>Loading payment details…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // UI
+  // ─────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-      >
-        <Text style={styles.title}>
-          Order Summary
-        </Text>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
-        {/* SUMMARY */}
-        <Card style={styles.summaryCard}>
-          <Row
-            label="Plan"
-            value={plan?.name}
-          />
+        <Text style={styles.title}>Order Summary</Text>
 
-          <Row
-            label="Duration"
-            value={`${plan.days} days`}
-          />
-
+        {/* ── Summary Card ── */}
+        <Card style={styles.card}>
+          <Row label="Plan" value={plan?.name} />
+          <Row label="Duration" value={`${plan?.days} days`} />
           <Row
             label="Meal Choice"
-            value={
-              mealChoice.charAt(0).toUpperCase() +
-              mealChoice.slice(1)
-            }
+            value={mealChoice.charAt(0).toUpperCase() + mealChoice.slice(1)}
           />
-
-          <Row
-            label="Area"
-            value={customer?.area}
-          />
-
-          <Row
-            label="Address"
-            value={customer?.address}
-          />
+          <Row label="Area" value={customer?.area} />
+          <Row label="Address" value={customer?.address} />
 
           <View style={styles.divider} />
 
-          <Row
-            label="Plan Total"
-            value={`₹${price}`}
-          />
+          <Row label="Plan Total" value={`₹${price}`} />
 
           {matchedCoupon && (
-            <Row
-              label="Discount"
-              value={`- ₹${discountAmount}`}
-            />
+            <Row label="Discount" value={`- ₹${discountAmount}`} valueStyle={styles.discountText} />
           )}
 
-          <Row
-            label="Final Total"
-            value={`₹${payableTotal}`}
-            highlight
-          />
+          <Row label="Final Total" value={`₹${payableTotal}`} highlight />
         </Card>
 
-        {/* COUPON */}
-        <Card style={styles.summaryCard}>
-          <Text style={styles.couponTitle}>
-            Coupon Code
-          </Text>
+        {/* ── Coupon Card ── */}
+        <Card style={styles.card}>
+          <Text style={styles.couponTitle}>Have a Coupon?</Text>
 
-          <TextInput
-            value={couponCode}
-            onChangeText={(text) => {
-              setCouponCode(
-                text.toUpperCase()
-              );
-
-              setAppliedCouponCode('');
-              setCouponError('');
-            }}
-            placeholder="Enter coupon code"
-            placeholderTextColor="#888"
-            style={styles.input}
-          />
+          <View style={styles.couponRow}>
+            <TextInput
+              value={couponCode}
+              onChangeText={(text) => {
+                setCouponCode(text.toUpperCase());
+                setAppliedCouponCode('');
+                setCouponError('');
+              }}
+              placeholder="Enter coupon code"
+              placeholderTextColor="#888"
+              style={[styles.input, { flex: 1, marginRight: 10 }]}
+              autoCapitalize="characters"
+              returnKeyType="done"
+              onSubmitEditing={applyCoupon}
+            />
+            <Button
+              title="Apply"
+              onPress={applyCoupon}
+              style={styles.applyBtn}
+            />
+          </View>
 
           {!!couponError && (
-            <Text style={styles.errorText}>
-              {couponError}
-            </Text>
+            <Text style={styles.errorText}>{couponError}</Text>
           )}
 
-          <Button
-            title="Apply Coupon"
-            onPress={applyCoupon}
-            style={{ marginTop: 12 }}
-          />
-
           {matchedCoupon && (
-            <Text style={styles.successText}>
-              Applied {matchedCoupon.code} (
-              {matchedCoupon.type ===
-                'percent'
-                ? `${matchedCoupon.value}% OFF`
-                : `₹${matchedCoupon.value} OFF`}
-              )
-            </Text>
+            <View style={styles.couponSuccess}>
+              <Text style={styles.successText}>
+                ✅ {matchedCoupon.code} —{' '}
+                {matchedCoupon.type === 'percent'
+                  ? `${matchedCoupon.value}% OFF`
+                  : `₹${matchedCoupon.value} OFF`}
+              </Text>
+              <Text style={styles.removeText} onPress={removeCoupon}>
+                Remove
+              </Text>
+            </View>
           )}
         </Card>
 
-        <Text style={styles.note}>
-          Payment secured by Cashfree
-        </Text>
+        <Text style={styles.note}>🔒 Payment secured by Razorpay</Text>
 
-        {/* PAY BUTTON */}
+        {/* ── Pay Button ── */}
         <Button
-          title={`Pay ₹${payableTotal}`}
+          title={loading ? 'Processing…' : `Pay ₹${payableTotal}`}
           onPress={handlePayment}
           loading={loading}
+          disabled={loading}
           style={styles.payBtn}
         />
 
@@ -543,32 +350,26 @@ export default function PaymentScreen({ navigation, route }) {
           title="Go Back"
           onPress={() => navigation.goBack()}
           variant="ghost"
-          style={styles.backBtn}
+          disabled={loading}
         />
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// =========================
-// ROW COMPONENT
-// =========================
-function Row({
-  label,
-  value,
-  highlight,
-}) {
+// ─────────────────────────────────────────────
+// Row component
+// ─────────────────────────────────────────────
+function Row({ label, value, highlight, valueStyle }) {
   return (
     <View style={styles.row}>
-      <Text style={styles.rowLabel}>
-        {label}
-      </Text>
-
+      <Text style={styles.rowLabel}>{label}</Text>
       <Text
         style={[
           styles.rowValue,
-          highlight &&
-          styles.rowValueHighlight,
+          highlight && styles.rowValueHighlight,
+          valueStyle,
         ]}
       >
         {value}
@@ -577,13 +378,26 @@ function Row({
   );
 }
 
-// =========================
-// STYLES
-// =========================
+// ─────────────────────────────────────────────
+// Styles
+// ─────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.black,
+  },
+
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+
+  loadingText: {
+    color: COLORS.whiteMuted,
+    fontSize: 14,
+    marginTop: 12,
   },
 
   scroll: {
@@ -598,19 +412,21 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
 
-  summaryCard: {
+  card: {
     marginBottom: 24,
   },
 
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
 
   rowLabel: {
     color: COLORS.whiteMuted,
     fontSize: 14,
+    flex: 1,
   },
 
   rowValue: {
@@ -627,10 +443,66 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
+  discountText: {
+    color: '#4ade80', // green
+  },
+
   divider: {
     height: 1,
     backgroundColor: COLORS.blackBorder,
-    marginVertical: 8,
+    marginVertical: 10,
+  },
+
+  couponTitle: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+
+  couponRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.blackBorder,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: COLORS.white,
+    backgroundColor: '#111',
+    fontSize: 14,
+  },
+
+  applyBtn: {
+    paddingHorizontal: 16,
+  },
+
+  couponSuccess: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+
+  successText: {
+    color: COLORS.gold,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+
+  removeText: {
+    color: '#f87171',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  errorText: {
+    color: '#f87171',
+    marginTop: 8,
+    fontSize: 13,
   },
 
   note: {
@@ -642,35 +514,5 @@ const styles = StyleSheet.create({
 
   payBtn: {
     marginBottom: 12,
-  },
-
-  backBtn: {},
-
-  couponTitle: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-
-  input: {
-    borderWidth: 1,
-    borderColor: COLORS.blackBorder,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: COLORS.white,
-    backgroundColor: '#111',
-  },
-
-  errorText: {
-    color: 'red',
-    marginTop: 8,
-  },
-
-  successText: {
-    color: COLORS.gold,
-    marginTop: 12,
-    fontWeight: '600',
   },
 });
